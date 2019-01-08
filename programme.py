@@ -1,28 +1,11 @@
-joueur={}
-nbr_jr=0
+from random import randrange
 
-def nouveau_joueur():
-    global nbr_jr   
-    nom_du_joueur=input('nom du joueur:')
-    joueur[nbr_jr]={"nom": nom_du_joueur , "jetons": 500}
-    nbr_jr=nbr_jr+1
+joueurs={}
 
-def perdu():
-    for i in range(nbr_jr):
-        if joueur[i].get("jetons")==0:
-            del joueur[i]
-
-def paquet_actuel():
-    global paquet, nouvelle_carte
-
-    x=randrange(0,len(paquet))
-    nouvelle_carte=paquet[x]
-    paquet.remove(paquet[x])
-
-    return nouvelle_carte
-
-
-def paquet_de_carte():
+#---------------------------------
+# Crée un nouveau paquet de cartes
+#---------------------------------
+def nouveau_paquet():
     global paquet
     paquet=['as_de_carreau','as_de_coeur','as_de_pic','as_de_trefle','2_de_carreau','2_de_coeur','2_de_pic','2_de_trefle',
             '3_de_carreau','3_de_coeur','3_de_pic','3_de_trefle','4_de_carreau','4_de_coeur','4_de_pic','4_de_trefle',
@@ -31,5 +14,42 @@ def paquet_de_carte():
             '9_de_carreau','9_de_coeur','9_de_pic','9_de_trefle','10_de_carreau','10_de_coeur','10_de_pic','10_de_trefle',
             'valet_de_carreau','valet_de_coeur','valet_de_pic','valet_de_trefle',
             'reine_de_carreau','reine_de_coeur','reine_de_pic','reine_de_trefle','roi_de_carreau','roi_de_coeur','roi_de_pic','roi_de_trefle']
-    
-    
+    return paquet
+
+#-------------------------
+# Ajoute un nouveau joueur
+#-------------------------
+def nouveau_joueur(nom_du_joueur):
+    global joueurs
+    joueurs.update({nom_du_joueur: {
+        "jetons": 500,
+        "perdu": False
+    }})
+
+#-------------------------
+# Tire une carte au hasard
+#-------------------------
+def nouvelle_carte():
+    global paquet
+
+    x=randrange(0,len(paquet))
+    nouvelle_carte=paquet[x]
+    paquet.remove(paquet[x])
+
+    return nouvelle_carte
+
+#----------------------
+# Recommence une partie
+#----------------------
+def nouvelle_partie():
+    nouveau_paquet()
+
+#----------------------
+# Fait perdre un joueur
+#----------------------
+def perdu(nom_du_joueur):
+    global joueurs
+    joueurs[nom_du_joueur]["perdu"] = True
+
+
+
