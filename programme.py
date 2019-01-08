@@ -44,6 +44,9 @@ def nouvelle_carte():
 #----------------------
 def nouvelle_partie():
     nouveau_paquet()
+    # + retirer les cartes des mains des joueurs
+    # + retirer les cartes sur le tapis
+    # + faire gagner les mises
 
 #----------------------
 # Fait perdre un joueur
