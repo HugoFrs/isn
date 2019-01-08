@@ -23,6 +23,7 @@ def nouveau_joueur(nom_du_joueur):
     global joueurs
     joueurs.update({nom_du_joueur: {
         "jetons": 500, # on transformera ici le 500 en dictionnaire comportant les types de jetons : leur nombre
+        "main": [] # les cartes que le joueur possède en main
         "perdu": False
     }})
 
