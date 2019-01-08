@@ -22,7 +22,7 @@ def nouveau_paquet():
 def nouveau_joueur(nom_du_joueur):
     global joueurs
     joueurs.update({nom_du_joueur: {
-        "jetons": 500,
+        "jetons": 500, # on transformera ici le 500 en dictionnaire comportant les types de jetons : leur nombre
         "perdu": False
     }})
 
