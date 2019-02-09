@@ -1,6 +1,9 @@
 from random import randrange
 
 joueurs={}
+tapis=[]
+mises={}
+derniere_mise={}
 
 #---------------------------------
 # Crée un nouveau paquet de cartes
@@ -22,8 +25,8 @@ def nouveau_paquet():
 def nouveau_joueur(nom_du_joueur):
     global joueurs
     joueurs.update({nom_du_joueur: {
-        "jetons": 500, # on transformera ici le 500 en dictionnaire comportant les types de jetons : leur nombre
-        "main": [] # les cartes que le joueur possède en main
+        "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
+        "main": [], # les cartes que le joueur possède en main
         "perdu": False
     }})
 
@@ -40,10 +43,31 @@ def nouvelle_carte():
     return nouvelle_carte
 
 #----------------------
+# Distribue les cartes
+#----------------------
+def distribuer():
+    global paquet,joueurs
+
+    nouveau_paquet()
+    nouvelle_carte()
+    for joueur in joueurs.keys():
+        joueurs[joueur]["main"]=[nouvelle_carte(),nouvelle_carte()]
+
+    nouvelle_carte() # brûle une carte
+    tapis.append(nouvelle_carte())
+    tapis.append(nouvelle_carte())
+    tapis.append(nouvelle_carte())
+    nouvelle_carte() # brûle une carte
+    tapis.append(nouvelle_carte())
+    nouvelle_carte() # brûle une carte
+    tapis.append(nouvelle_carte())
+
+#----------------------
 # Recommence une partie
 #----------------------
 def nouvelle_partie():
     nouveau_paquet()
+    derniere_mise={}
     # + retirer les cartes des mains des joueurs
     # + retirer les cartes sur le tapis
     # + faire gagner les mises
@@ -55,5 +79,24 @@ def perdu(nom_du_joueur):
     global joueurs
     joueurs[nom_du_joueur]["perdu"] = True
 
+#----------------------
+# Fait miser un joueur
+#----------------------
+def nouvelle_mise(nom_du_joueur, mise):
+    global joueurs, mises
+    
+    mises.update({nom_du_joueur: mise})
+    derniere_mise = mise
+    for couleur, nbr in mise.items():
+        joueurs[nom_du_joueur]["jetons"][couleur] -= nbr
 
+#-----------------------------------
+# Fait gagner les mises à un joueur
+#-----------------------------------
+def gagne_la_mise(nom_du_joueur):
+    global joueurs, mises
 
+    for miseur, jetons in mises.items():
+        for couleur, nbr in jetons.items():
+            joueurs[nom_du_joueur]["jetons"][couleur] += nbr
+    mises={}
