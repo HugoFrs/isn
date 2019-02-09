@@ -49,9 +49,12 @@ def distribuer():
     global paquet,joueurs
 
     nouveau_paquet()
-    nouvelle_carte()
+    # Première carte à chaque joueur
     for joueur in joueurs.keys():
-        joueurs[joueur]["main"]=[nouvelle_carte(),nouvelle_carte()]
+        joueurs[joueur]["main"].append(nouvelle_carte())
+    # Deuxième carte à chaque joueur
+    for joueur in joueurs.keys():
+        joueurs[joueur]["main"].append(nouvelle_carte())
 
     nouvelle_carte() # brûle une carte
     tapis.append(nouvelle_carte())
