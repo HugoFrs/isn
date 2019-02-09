@@ -47,7 +47,8 @@ def nouvelle_carte():
 #----------------------
 def distribuer():
     global paquet,joueurs
-
+    # On réalise la distribution comme dans la réalité:
+    # Mélange du paquet
     nouveau_paquet()
     # Première carte à chaque joueur
     for joueur in joueurs.keys():
@@ -57,13 +58,13 @@ def distribuer():
         joueurs[joueur]["main"].append(nouvelle_carte())
 
     nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte())
-    tapis.append(nouvelle_carte())
-    tapis.append(nouvelle_carte())
+    tapis.append(nouvelle_carte()) # carte sur le tapis
+    tapis.append(nouvelle_carte()) # carte sur le tapis
+    tapis.append(nouvelle_carte()) # carte sur le tapis
     nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte())
+    tapis.append(nouvelle_carte()) # carte sur le tapis
     nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte())
+    tapis.append(nouvelle_carte()) # carte sur le tapis
 
 #----------------------
 # Recommence une partie
