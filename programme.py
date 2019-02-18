@@ -1,9 +1,105 @@
 from random import randrange
+from tkinter import *
 
 joueurs={}
 tapis=[]
 mises={}
 derniere_mise={}
+
+fen = Tk()
+fen.title("Poker")
+
+canvas = Canvas(fen, width=1000, height=600, background="darkgreen")
+canvas.pack(side=LEFT)
+
+paquetImages = {
+    "dos_de_carte":  PhotoImage(file="dos_de_carte.png"),
+    
+    "as_de_carreau": PhotoImage(file="as_de_carreau.png"),
+    "as_de_coeur":   PhotoImage(file="as_de_coeur.png"),
+    "as_de_pic":     PhotoImage(file="as_de_pic.png"),
+    "as_de_trefle":  PhotoImage(file="as_de_trefle.png"),
+    "2_de_carreau":  PhotoImage(file="2_de_carreau.png"),
+    "2_de_coeur":    PhotoImage(file="2_de_coeur.png"),
+    "2_de_pic":      PhotoImage(file="2_de_pic.png"),
+    "2_de_trefle":   PhotoImage(file="2_de_trefle.png"),
+
+    "3_de_carreau":  PhotoImage(file="3_de_carreau.png"),
+    "3_de_coeur":    PhotoImage(file="3_de_coeur.png"),
+    "3_de_pic":      PhotoImage(file="3_de_pic.png"),
+    "3_de_trefle":   PhotoImage(file="3_de_trefle.png"),
+    "4_de_carreau":  PhotoImage(file="4_de_carreau.png"),
+    "4_de_coeur":    PhotoImage(file="4_de_coeur.png"),
+    "4_de_pic":      PhotoImage(file="4_de_pic.png"),
+    "4_de_trefle":   PhotoImage(file="4_de_trefle.png"),
+
+    "5_de_carreau":  PhotoImage(file="5_de_carreau.png"),
+    "5_de_coeur":    PhotoImage(file="5_de_coeur.png"),
+    "5_de_pic":      PhotoImage(file="5_de_pic.png"),
+    "5_de_trefle":   PhotoImage(file="5_de_trefle.png"),
+    "6_de_carreau":  PhotoImage(file="6_de_carreau.png"),
+    "6_de_coeur":    PhotoImage(file="6_de_coeur.png"),
+    "6_de_pic":      PhotoImage(file="6_de_pic.png"),
+    "6_de_trefle":   PhotoImage(file="6_de_trefle.png"),
+
+    "7_de_carreau":  PhotoImage(file="7_de_carreau.png"),
+    "7_de_coeur":    PhotoImage(file="7_de_coeur.png"),
+    "7_de_pic":      PhotoImage(file="7_de_pic.png"),
+    "7_de_trefle":   PhotoImage(file="7_de_trefle.png"),
+    "8_de_carreau":  PhotoImage(file="8_de_carreau.png"),
+    "8_de_coeur":    PhotoImage(file="8_de_coeur.png"),
+    "8_de_pic":      PhotoImage(file="8_de_pic.png"),
+    "8_de_trefle":   PhotoImage(file="8_de_trefle.png"),
+
+    "9_de_carreau":  PhotoImage(file="9_de_carreau.png"),
+    "9_de_coeur":    PhotoImage(file="9_de_coeur.png"),
+    "9_de_pic":      PhotoImage(file="9_de_pic.png"),
+    "9_de_trefle":   PhotoImage(file="9_de_trefle.png"),
+    "10_de_carreau": PhotoImage(file="10_de_carreau.png"),
+    "10_de_coeur":   PhotoImage(file="10_de_coeur.png"),
+    "10_de_pic":     PhotoImage(file="10_de_pic.png"),
+    "10_de_trefle":  PhotoImage(file="10_de_trefle.png"),
+
+    "valet_de_carreau": PhotoImage(file="valet_de_carreau.png"),
+    "valet_de_coeur":   PhotoImage(file="valet_de_coeur.png"),
+    "valet_de_pic":     PhotoImage(file="valet_de_pic.png"),
+    "valet_de_trefle":  PhotoImage(file="valet_de_trefle.png"),
+
+    "reine_de_carreau": PhotoImage(file="reine_de_carreau.png"),
+    "reine_de_coeur":   PhotoImage(file="reine_de_coeur.png"),
+    "reine_de_pic":     PhotoImage(file="reine_de_pic.png"),
+    "reine_de_trefle":  PhotoImage(file="reine_de_trefle.png"),
+    "roi_de_carreau":   PhotoImage(file="roi_de_carreau.png"),
+    "roi_de_coeur":     PhotoImage(file="roi_de_coeur.png"),
+    "roi_de_pic":       PhotoImage(file="roi_de_pic.png"),
+    "roi_de_trefle":    PhotoImage(file="roi_de_trefle.png"),
+}
+
+#------------------------------------------------------------------------------------------
+
+#-------------------------
+# Ajoute un nouveau joueur
+#-------------------------
+def nouveau_joueur(nom_du_joueur):
+    global joueurs
+    joueurs.update({nom_du_joueur: {
+        "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
+        "main": [], # les cartes que le joueur possède en main
+        "perdu": False
+    }})
+
+#----------------------------------
+# Calcule l'argent total du joueur
+#----------------------------------
+def total(nom_du_joueur):
+    global joueurs
+    total = 0
+    total += joueurs[nom_du_joueur]["jetons"]["rouges"] * 25
+    total += joueurs[nom_du_joueur]["jetons"]["verts"] * 50
+    total += joueurs[nom_du_joueur]["jetons"]["bleus"] * 100
+    total += joueurs[nom_du_joueur]["jetons"]["noirs"] * 200
+    return total
+    
 
 #---------------------------------
 # Crée un nouveau paquet de cartes
@@ -20,17 +116,6 @@ def nouveau_paquet():
     return paquet
 
 #-------------------------
-# Ajoute un nouveau joueur
-#-------------------------
-def nouveau_joueur(nom_du_joueur):
-    global joueurs
-    joueurs.update({nom_du_joueur: {
-        "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
-        "main": [], # les cartes que le joueur possède en main
-        "perdu": False
-    }})
-
-#-------------------------
 # Tire une carte au hasard
 #-------------------------
 def nouvelle_carte():
@@ -42,29 +127,41 @@ def nouvelle_carte():
 
     return nouvelle_carte
 
+#-------------------
+# Affiche une carte
+#-------------------
+def place_carte(x, y, nom_de_la_carte):
+    return canvas.create_image(x,y, anchor=NW, image=paquetImages[nom_de_la_carte])
+
 #----------------------
 # Distribue les cartes
 #----------------------
 def distribuer():
     global paquet,joueurs
-    # On réalise la distribution comme dans la réalité:
-    # Mélange du paquet
+
     nouveau_paquet()
-    # Première carte à chaque joueur
+    nouvelle_carte()
     for joueur in joueurs.keys():
-        joueurs[joueur]["main"].append(nouvelle_carte())
-    # Deuxième carte à chaque joueur
-    for joueur in joueurs.keys():
-        joueurs[joueur]["main"].append(nouvelle_carte())
+        joueurs[joueur]["main"]=[nouvelle_carte(),nouvelle_carte()]
 
     nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte()) # carte sur le tapis
-    tapis.append(nouvelle_carte()) # carte sur le tapis
-    tapis.append(nouvelle_carte()) # carte sur le tapis
+    
+    tapis.append(nouvelle_carte())
+    place_carte(250,200, "dos_de_carte")
+
+    tapis.append(nouvelle_carte())
+    place_carte(350,200, "dos_de_carte")
+    
+    tapis.append(nouvelle_carte())
+    place_carte(450,200, "dos_de_carte")
+    
     nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte()) # carte sur le tapis
+    tapis.append(nouvelle_carte())
+    place_carte(570,200, "dos_de_carte")
+    
     nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte()) # carte sur le tapis
+    tapis.append(nouvelle_carte())
+    place_carte(670,200, "dos_de_carte")
 
 #----------------------
 # Recommence une partie
@@ -72,6 +169,7 @@ def distribuer():
 def nouvelle_partie():
     nouveau_paquet()
     derniere_mise={}
+    distribuer()
     # + retirer les cartes des mains des joueurs
     # + retirer les cartes sur le tapis
     # + faire gagner les mises
@@ -104,3 +202,10 @@ def gagne_la_mise(nom_du_joueur):
         for couleur, nbr in jetons.items():
             joueurs[nom_du_joueur]["jetons"][couleur] += nbr
     mises={}
+
+
+#------------------------------------------------------------------------------------------
+
+nouvelle_partie()
+
+fen.mainloop()
