@@ -2,8 +2,11 @@ from random import randrange
 from tkinter import *
 
 joueurs={}
+joueurs_ordre=[]
+tour = -1
 tapis=[]
 mises={}
+visible={}
 derniere_mise={}
 
 fen = Tk()
@@ -81,12 +84,13 @@ paquetImages = {
 # Ajoute un nouveau joueur
 #-------------------------
 def nouveau_joueur(nom_du_joueur):
-    global joueurs
+    global joueurs, joueurs_ordre
     joueurs.update({nom_du_joueur: {
         "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
         "main": [], # les cartes que le joueur possède en main
         "perdu": False
     }})
+    joueurs_ordre.append(nom_du_joueur)
 
 #----------------------------------
 # Calcule l'argent total du joueur
@@ -167,9 +171,11 @@ def distribuer():
 # Recommence une partie
 #----------------------
 def nouvelle_partie():
+    global tour_joueur
     nouveau_paquet()
     derniere_mise={}
     distribuer()
+    tour_suivant()
     # + retirer les cartes des mains des joueurs
     # + retirer les cartes sur le tapis
     # + faire gagner les mises
@@ -203,8 +209,54 @@ def gagne_la_mise(nom_du_joueur):
             joueurs[nom_du_joueur]["jetons"][couleur] += nbr
     mises={}
 
+#----------------------------------------
+# Passe au tour suivant (joueur suivant)
+#----------------------------------------
+def tour_suivant():
+    global tour, visible
+
+    # Passe le tour suivant (+ joueur suivant)
+    while True:
+        if (tour >= len(joueurs)-1):
+            tour = 0
+        else: 
+            tour += 1
+        nom = joueurs_ordre[tour]
+        joueur_suivant = joueurs[nom]
+        if (joueur_suivant["perdu"] == False): 
+            break
+    
+    # Cache le visible
+    if (visible != {}):
+        canvas.delete(visible["nom"])
+        for i in range(len(visible["main"])):
+            canvas.delete(visible["main"][i])
+        for i in range(len(visible["jetons"])):
+            canvas.delete(visible["jetons"][i])
+        
+
+    
+    # Affiche le visible du joueur suivant
+    visible = {
+        "nom": canvas.create_text(320, 550, text=nom, font=("Purisa",16)),
+        "jetons": [
+            canvas.create_text(385, 450, text="Rouges : " + str(joueur_suivant["jetons"]["rouges"]), font=("Purisa",16)),
+            canvas.create_text(500, 450, text="Verts : " + str(joueur_suivant["jetons"]["verts"]), font=("Purisa",16)),
+            canvas.create_text(600, 450, text="Bleus : " + str(joueur_suivant["jetons"]["bleus"]), font=("Purisa",16)),
+            canvas.create_text(700, 450, text="Noirs : " + str(joueur_suivant["jetons"]["noirs"]), font=("Purisa",16))
+        ],
+        "main": []
+    }
+    for i in range(len(joueur_suivant["main"])):
+        visible["main"].append(place_carte(420+i*80, 500, joueur_suivant["main"][i]))
+    
+    
 
 #------------------------------------------------------------------------------------------
+
+nouveau_joueur("Hugo")
+nouveau_joueur("Yves")
+nouveau_joueur("Lucien")
 
 nouvelle_partie()
 
