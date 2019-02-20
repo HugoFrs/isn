@@ -234,8 +234,6 @@ def tour_suivant():
         for i in range(len(visible["jetons"])):
             canvas.delete(visible["jetons"][i])
         
-
-    
     # Affiche le visible du joueur suivant
     visible = {
         "nom": canvas.create_text(320, 550, text=nom, font=("Purisa",16)),
