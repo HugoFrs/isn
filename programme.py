@@ -15,6 +15,18 @@ fen.title("Poker")
 canvas = Canvas(fen, width=1000, height=600, background="darkgreen")
 canvas.pack(side=LEFT)
 
+jetonsImages = {
+    "rouge": PhotoImage(file="jeton_rouge.png"),
+    "vert": PhotoImage(file="jeton_vert.png"),
+    "bleu": PhotoImage(file="jeton_bleu.png"),
+    "noir": PhotoImage(file="jeton_noir.png")
+}
+
+canvas.create_image(300, 350, anchor=NW, image=jetonsImages["rouge"])
+canvas.create_image(400, 350, anchor=NW, image=jetonsImages["vert"])
+canvas.create_image(500, 350, anchor=NW, image=jetonsImages["bleu"])
+canvas.create_image(600, 350, anchor=NW, image=jetonsImages["noir"])
+
 paquetImages = {
     "dos_de_carte":  PhotoImage(file="dos_de_carte.png"),
     
@@ -229,20 +241,22 @@ def tour_suivant():
     # Cache le visible
     if (visible != {}):
         canvas.delete(visible["nom"])
+        canvas.delete(visible["total"])
         for i in range(len(visible["main"])):
             canvas.delete(visible["main"][i])
-        for i in range(len(visible["jetons"])):
-            canvas.delete(visible["jetons"][i])
-        
+        for key in visible["jetons"].keys():
+            canvas.delete(visible["jetons"][key])
+    
     # Affiche le visible du joueur suivant
     visible = {
-        "nom": canvas.create_text(320, 550, text=nom, font=("Purisa",16)),
-        "jetons": [
-            canvas.create_text(385, 450, text="Rouges : " + str(joueur_suivant["jetons"]["rouges"]), font=("Purisa",16)),
-            canvas.create_text(500, 450, text="Verts : " + str(joueur_suivant["jetons"]["verts"]), font=("Purisa",16)),
-            canvas.create_text(600, 450, text="Bleus : " + str(joueur_suivant["jetons"]["bleus"]), font=("Purisa",16)),
-            canvas.create_text(700, 450, text="Noirs : " + str(joueur_suivant["jetons"]["noirs"]), font=("Purisa",16))
-        ],
+        "nom": canvas.create_text(950, 550, text=nom, font=("Purisa",16), anchor="e"),
+        "total": canvas.create_text(950, 575, text=str(total(nom)) + " €", font=("Purisa", 12), anchor="e"),
+        "jetons": {
+            "rouges": canvas.create_text(340, 445, text="x" + str(joueur_suivant["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
+            "verts" : canvas.create_text(440, 445, text="x" + str(joueur_suivant["jetons"]["verts"]), font=("Purisa",16), fill="white"),
+            "bleus" : canvas.create_text(540, 445, text="x" + str(joueur_suivant["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
+            "noirs" : canvas.create_text(640, 445, text="x" + str(joueur_suivant["jetons"]["noirs"]), font=("Purisa",16), fill="white")
+        },
         "main": []
     }
     for i in range(len(joueur_suivant["main"])):
