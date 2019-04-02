@@ -183,11 +183,12 @@ def distribuer():
 # Recommence une partie
 #----------------------
 def nouvelle_partie():
-    global tour_joueur
+    global tour_joueur,mise_tour
     nouveau_paquet()
     derniere_mise={}
     distribuer()
     tour_suivant()
+    mise_tour={"Hugo":0,"Yves":0,"Lucien":0}
     # + retirer les cartes des mains des joueurs
     # + retirer les cartes sur le tapis
     # + faire gagner les mises
@@ -198,12 +199,14 @@ def nouvelle_partie():
 def perdu(nom_du_joueur):
     global joueurs
     joueurs[nom_du_joueur]["perdu"] = True
+    del mise_tour[joueurs_ordre[tour]]
 
 #----------------------
 # Fait miser un joueur
 #----------------------
-def nouvelle_mise(nom_du_joueur, mise):
+def nouvelle_mise(nom_du_joueur, n):
     global joueurs, mises
+    mise={"rouges":int(n%200%50/25),"verts":int(n%200%100/50), "bleus":int(n%200/100), "noirs":int(n/200)}
     
     mises.update({nom_du_joueur: mise})
     derniere_mise = mise
@@ -261,15 +264,114 @@ def tour_suivant():
     }
     for i in range(len(joueur_suivant["main"])):
         visible["main"].append(place_carte(420+i*80, 500, joueur_suivant["main"][i]))
-    
-    
 
+
+
+#---------------
+# Passe le tour
+#---------------
+def Passer():
+    global Passer, mise_tour
+    perdu(joueurs_ordre[tour])
+    tour_suivant()
+    print(mise_tour)
+
+#----------------------------
+# Suivre le joueur précédent
+#----------------------------
+def Suivre():
+    global Suivre, mise_tour, mise_initiale
+    nouvelle_mise(joueurs_ordre[tour],mise_initiale-mise_tour.get(joueurs_ordre[tour]))#Pour éviter de payer en trop(ex: pour la petite blinde)
+    mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+    tour_suivant()
+    print(mise_tour)
+
+#------------------
+# Relance une mise
+#------------------
+def Relancer():
+    global Relancer, relance_mise, mise_tour, mise_initiale
+    relance_mise=int(val.get())
+    mise_initiale = relance_mise
+    nouvelle_mise(joueurs_ordre[tour],mise_initiale-mise_tour.get(joueurs_ordre[tour]))        
+    mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+    tour_suivant()
+    print(mise_tour)
+
+#----------------------
+# Mise tout les jetons
+#----------------------
+def All_in(): # TODO: Forcer le all-in aux autres joueurs ou passer
+    global All_in, mise_initiale, mise_tour
+    mise_initiale = total(joueurs_ordre[tour])+mise_tour.get(joueurs_ordre[tour])
+    nouvelle_mise(joueurs_ordre[tour],mise_initiale-mise_tour.get(joueurs_ordre[tour])) # mise tous les jetons
+    mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+    tour_suivant()
+    print(mise_tour)
+
+#-------
+# Check
+#-------
+def Check():
+    global Check
+    mise_initiale=0
+    if mise_initiale==0:
+        bouton_check.config(state=NORMAL)#Possibilié de check
+    else:
+        bouton_check.config(state=DISABLED)
+    tour_suivant()
+    print(mise_tour)
+
+#------------------------------------
+# Mise de la grosse et petite blinde
+#------------------------------------
+def position_des_blindes():
+    
+    if mise_initiale/2 > total(joueurs_ordre[tour])/2:
+        perdu(joueurs_ordre[tour]) # ou all-in, je sais pas trop quoi mettre
+    else:
+        nouvelle_mise(joueurs_ordre[tour],mise_initiale/2) # petite blinde
+        mise_tour.update({joueurs_ordre[tour]: mise_initiale/2})
+                    # ici la syntaxe est surment a changer mais le but et de connaitre
+                    # la mise d'un joueur pour le tour de table
+    tour_suivant()
+
+    if mise_initiale > total(joueurs_ordre[tour]):
+        perdu(joueurs_ordre[tour]) # idem
+    else:
+        nouvelle_mise(joueurs_ordre[tour],mise_initiale) # grosse blinde
+        mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+
+    save_de_la_mi=mise_initiale # on sauvegarde pour apres le flop (au cas d'une relance)
+    tour_suivant()    
+    
+    
+    
+    
 #------------------------------------------------------------------------------------------
+
+bouton_passer=Button(fen,text='Passer',command=Passer)
+bouton_passer.pack()
+bouton_suivre=Button(fen,text='Suivre',command=Suivre)
+bouton_suivre.pack()
+bouton_check=Button(fen,text='Check',state=DISABLED,command=Check)
+bouton_check.pack()
+bouton_allin=Button(fen,text='All-in',command=All_in)
+bouton_allin.pack()
+val=DoubleVar()
+Scale1=Scale(fen, orient='vertical', from_=0, to=1000,resolution=25,tickinterval=200,
+             length=125,label='Relance',variable=val)
+Scale1.pack()
+bouton_relance=Button(fen,text='Relancer',command=Relancer)
+bouton_relance.pack()
+
+mise_initiale=50
 
 nouveau_joueur("Hugo")
 nouveau_joueur("Yves")
 nouveau_joueur("Lucien")
 
 nouvelle_partie()
+position_des_blindes()
 
 fen.mainloop()
