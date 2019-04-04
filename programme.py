@@ -23,10 +23,10 @@ jetonsImages = {
     "noir": PhotoImage(file="jeton_noir.png")
 }
 
-canvas.create_image(300, 270, anchor=NW, image=jetonsImages["rouge"])
-canvas.create_image(400, 270, anchor=NW, image=jetonsImages["vert"])
-canvas.create_image(500, 270, anchor=NW, image=jetonsImages["bleu"])
-canvas.create_image(600, 270, anchor=NW, image=jetonsImages["noir"])
+canvas.create_image(310, 240, anchor=NW, image=jetonsImages["rouge"])
+canvas.create_image(410, 240, anchor=NW, image=jetonsImages["vert"])
+canvas.create_image(510, 240, anchor=NW, image=jetonsImages["bleu"])
+canvas.create_image(610, 240, anchor=NW, image=jetonsImages["noir"])
 
 paquetImages = {
     "dos_de_carte":  PhotoImage(file="dos_de_carte.png"),
@@ -166,21 +166,21 @@ def distribuer():
     nouvelle_carte() # brûle une carte
     
     tapis.append(nouvelle_carte())
-    place_carte(250,120, "dos_de_carte")
+    place_carte(260,110, "dos_de_carte")
 
     tapis.append(nouvelle_carte())
-    place_carte(350,120, "dos_de_carte")
+    place_carte(360,110, "dos_de_carte")
     
     tapis.append(nouvelle_carte())
-    place_carte(450,120, "dos_de_carte")
-    
-    nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte())
-    place_carte(570,120, "dos_de_carte")
+    place_carte(460,110, "dos_de_carte")
     
     nouvelle_carte() # brûle une carte
     tapis.append(nouvelle_carte())
-    place_carte(670,120, "dos_de_carte")
+    place_carte(580,110, "dos_de_carte")
+    
+    nouvelle_carte() # brûle une carte
+    tapis.append(nouvelle_carte())
+    place_carte(680,110, "dos_de_carte")
 
 #----------------------
 # Recommence une partie
@@ -249,6 +249,20 @@ def gagne_la_mise(nom_du_joueur):
             joueurs[nom_du_joueur]["jetons"][couleur] += nbr
     mises={}
 
+#----------------------------------------
+# Récupère et affiche le total des mises
+#----------------------------------------
+def total_mises():
+    global visible
+    total = 0
+    for mise in mises.values():
+        total += mise["rouges"] * 25
+        total += mise["verts"] * 50
+        total += mise["bleus"] * 100
+        total += mise["noirs"] * 200
+    visible["total_mises"] = canvas.create_text(30, 40, text="BUTIN TOTAL : " + str(total) + " €", font=("Purisa",14), fill="white", anchor="w")
+    return total_mises
+
 #--------------------
 # Affiche le visible
 #--------------------
@@ -259,7 +273,8 @@ def affiche_visible():
     if (visible != {}):
         canvas.delete(visible["nom"])
         canvas.delete(visible["total"])
-        canvas.delete(visible["table"]["barre"])
+        canvas.delete(visible["total_mises"])
+        canvas.delete(visible["tableau"]["barre"])
         for main in visible["main"]:
             canvas.delete(visible["main"])
         for key in visible["jetons"].keys():
@@ -268,7 +283,7 @@ def affiche_visible():
             canvas.delete(score["nom"])
             canvas.delete(score["total"])
             canvas.delete(score["total_mise"])
-        for titre in visible["table"]["titres"]:
+        for titre in visible["tableau"]["titres"]:
             canvas.delete(titre)
     
     # Affiche le visible du joueur en cours
@@ -276,35 +291,35 @@ def affiche_visible():
         "nom": canvas.create_text(960, 540, text=joueur_en_cours["nom"], font=("Purisa",18), fill="white", anchor="e"),
         "total": canvas.create_text(960, 565, text=str(total(joueur_en_cours["nom"])) + " €", font=("Purisa", 14), fill="white", anchor="e"),
         "jetons": {
-            "rouges": canvas.create_text(340, 370, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
-            "verts" : canvas.create_text(440, 370, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
-            "bleus" : canvas.create_text(540, 370, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
-            "noirs" : canvas.create_text(640, 370, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
+            "rouges": canvas.create_text(350, 340, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
+            "verts" : canvas.create_text(450, 340, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
+            "bleus" : canvas.create_text(550, 340, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
+            "noirs" : canvas.create_text(650, 340, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
         },
         "main": [],
         "scoreboard": [],
-        "table": {}
+        "tableau": {}
     }
+    total_mises()
     i = 0
     for joueur in joueurs.values():
         i += 1
-        
         visible["scoreboard"].append({
                 "nom": canvas.create_text(31, 600-i*25, text=joueur["nom"], font=("Purisa", 12), fill="white", anchor="w"),
-                "total": canvas.create_text(130, 600-i*25, text=str(total(joueur["nom"])) + " €", font=("Purisa", 12), fill="white", anchor="w"),
-                "total_mise": canvas.create_text(230, 600-i*25, text=str(mises_tour[joueur["nom"]]) + " €", font=("Purisa", 12), fill="white", anchor="w")
+                "total": canvas.create_text(150, 600-i*25, text=str(total(joueur["nom"])) + " €", font=("Purisa", 12), fill="white", anchor="w"),
+                "total_mise": canvas.create_text(250, 600-i*25, text=str(mises_tour[joueur["nom"]]) + " €", font=("Purisa", 12), fill="white", anchor="w")
             })
         visible["main"].append(place_carte(420, 490, joueur_en_cours["main"][0]))
         visible["main"].append(place_carte(500, 490, joueur_en_cours["main"][1]))
 
     i += 1
-    visible["table"].update({
+    visible["tableau"].update({
         "titres": [
-            canvas.create_text(30, 590-i*30, text="NOM", font=("Purisa", 14), fill="white", anchor="w"),
-            canvas.create_text(130, 590-i*30, text="TOTAL", font=("Purisa", 14), fill="white", anchor="w"),
-            canvas.create_text(230, 590-i*30, text="MISE", font=("Purisa", 14), fill="white", anchor="w")
+            canvas.create_text(30, 590-i*25-20, text="NOM", font=("Purisa", 14), fill="white", anchor="w"),
+            canvas.create_text(150, 590-i*25-20, text="TOTAL", font=("Purisa", 14), fill="white", anchor="w"),
+            canvas.create_text(250, 590-i*25-20, text="MISE TOUR", font=("Purisa", 14), fill="white", anchor="w")
         ],
-        "barre": canvas.create_line(29, 590-i*25, 290, 590-i*25, fill="white", dash=(6))
+        "barre": canvas.create_line(29, 590-i*25, 350, 590-i*25, fill="white", dash=(1))
     })
 
 #------------------------------------------
@@ -465,7 +480,6 @@ def relancer():
 def all_in():
     global mise_initiale, mises_tour
     joueur_en_cours["all_in"] = True
-    bouton_relance.configure(state=DISABLED)
     mise_initiale = total(joueur_en_cours["nom"]) + mises_tour[joueur_en_cours["nom"]]
     nouvelle_mise(joueur_en_cours["nom"], {
             "rouges": joueur_en_cours["jetons"]["rouges"],
