@@ -23,10 +23,10 @@ jetonsImages = {
     "noir": PhotoImage(file="jeton_noir.png")
 }
 
-canvas.create_image(300, 350, anchor=NW, image=jetonsImages["rouge"])
-canvas.create_image(400, 350, anchor=NW, image=jetonsImages["vert"])
-canvas.create_image(500, 350, anchor=NW, image=jetonsImages["bleu"])
-canvas.create_image(600, 350, anchor=NW, image=jetonsImages["noir"])
+canvas.create_image(300, 270, anchor=NW, image=jetonsImages["rouge"])
+canvas.create_image(400, 270, anchor=NW, image=jetonsImages["vert"])
+canvas.create_image(500, 270, anchor=NW, image=jetonsImages["bleu"])
+canvas.create_image(600, 270, anchor=NW, image=jetonsImages["noir"])
 
 paquetImages = {
     "dos_de_carte":  PhotoImage(file="dos_de_carte.png"),
@@ -103,7 +103,7 @@ def nouveau_joueur(nom_du_joueur):
         "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
         "main": [], # les cartes que le joueur possède en main
         "perdu": False,
-        "passe": False,
+        "couche": False,
         "all_in": False
     }})
     joueurs_ordre.append(nom_du_joueur)
@@ -166,21 +166,21 @@ def distribuer():
     nouvelle_carte() # brûle une carte
     
     tapis.append(nouvelle_carte())
-    place_carte(250,200, "dos_de_carte")
+    place_carte(250,120, "dos_de_carte")
 
     tapis.append(nouvelle_carte())
-    place_carte(350,200, "dos_de_carte")
+    place_carte(350,120, "dos_de_carte")
     
     tapis.append(nouvelle_carte())
-    place_carte(450,200, "dos_de_carte")
-    
-    nouvelle_carte() # brûle une carte
-    tapis.append(nouvelle_carte())
-    place_carte(570,200, "dos_de_carte")
+    place_carte(450,120, "dos_de_carte")
     
     nouvelle_carte() # brûle une carte
     tapis.append(nouvelle_carte())
-    place_carte(670,200, "dos_de_carte")
+    place_carte(570,120, "dos_de_carte")
+    
+    nouvelle_carte() # brûle une carte
+    tapis.append(nouvelle_carte())
+    place_carte(670,120, "dos_de_carte")
 
 #----------------------
 # Recommence une partie
@@ -244,7 +244,7 @@ def nouvelle_mise(nom_du_joueur, mise):
 def gagne_la_mise(nom_du_joueur):
     global joueurs, mises
 
-    for miseur, jetons in mises.items():
+    for jetons in mises.values():
         for couleur, nbr in jetons.items():
             joueurs[nom_du_joueur]["jetons"][couleur] += nbr
     mises={}
@@ -259,33 +259,53 @@ def affiche_visible():
     if (visible != {}):
         canvas.delete(visible["nom"])
         canvas.delete(visible["total"])
+        canvas.delete(visible["table"]["barre"])
         for main in visible["main"]:
             canvas.delete(visible["main"])
         for key in visible["jetons"].keys():
             canvas.delete(visible["jetons"][key])
         for score in visible["scoreboard"]:
-            canvas.delete(score)
+            canvas.delete(score["nom"])
+            canvas.delete(score["total"])
+            canvas.delete(score["total_mise"])
+        for titre in visible["table"]["titres"]:
+            canvas.delete(titre)
     
     # Affiche le visible du joueur en cours
     visible = {
         "nom": canvas.create_text(960, 540, text=joueur_en_cours["nom"], font=("Purisa",18), fill="white", anchor="e"),
         "total": canvas.create_text(960, 565, text=str(total(joueur_en_cours["nom"])) + " €", font=("Purisa", 14), fill="white", anchor="e"),
         "jetons": {
-            "rouges": canvas.create_text(340, 445, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
-            "verts" : canvas.create_text(440, 445, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
-            "bleus" : canvas.create_text(540, 445, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
-            "noirs" : canvas.create_text(640, 445, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
+            "rouges": canvas.create_text(340, 370, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
+            "verts" : canvas.create_text(440, 370, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
+            "bleus" : canvas.create_text(540, 370, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
+            "noirs" : canvas.create_text(640, 370, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
         },
         "main": [],
-        "scoreboard": []
+        "scoreboard": [],
+        "table": {}
     }
     i = 0
     for joueur in joueurs.values():
         i += 1
-        visible["scoreboard"].append(canvas.create_text(30, 590-i*25, text=joueur["nom"] + ": " + str(total(joueur["nom"])) + " €",
-                                                        font=("Purisa", 14), fill="white", anchor="w"))
-        visible["main"].append(place_carte(420, 500, joueur_en_cours["main"][0]))
-        visible["main"].append(place_carte(500, 500, joueur_en_cours["main"][1]))
+        
+        visible["scoreboard"].append({
+                "nom": canvas.create_text(31, 600-i*25, text=joueur["nom"], font=("Purisa", 12), fill="white", anchor="w"),
+                "total": canvas.create_text(130, 600-i*25, text=str(total(joueur["nom"])) + " €", font=("Purisa", 12), fill="white", anchor="w"),
+                "total_mise": canvas.create_text(230, 600-i*25, text=str(mises_tour[joueur["nom"]]) + " €", font=("Purisa", 12), fill="white", anchor="w")
+            })
+        visible["main"].append(place_carte(420, 490, joueur_en_cours["main"][0]))
+        visible["main"].append(place_carte(500, 490, joueur_en_cours["main"][1]))
+
+    i += 1
+    visible["table"].update({
+        "titres": [
+            canvas.create_text(30, 590-i*30, text="NOM", font=("Purisa", 14), fill="white", anchor="w"),
+            canvas.create_text(130, 590-i*30, text="TOTAL", font=("Purisa", 14), fill="white", anchor="w"),
+            canvas.create_text(230, 590-i*30, text="MISE", font=("Purisa", 14), fill="white", anchor="w")
+        ],
+        "barre": canvas.create_line(29, 590-i*25, 290, 590-i*25, fill="white", dash=(6))
+    })
 
 #------------------------------------------
 # Mets à jour les status des boutons etc..
@@ -334,14 +354,15 @@ def joueur_suivant():
 
     # Vérifie si tous les joueurs ont atteint la même mise
     boucle_terminee = 0
-    for loop in mises_tour.keys():
-        if (boucle_terminee == 0):
-            boucle_terminee = mises_tour[loop]
-        elif (boucle_terminee != mises_tour[loop]):
-            break
-        elif (boucle_terminee == mises_tour[loop]):
-            boucle_terminee = True
-            break
+    for nom_joueur in mises_tour.keys():
+        if (joueurs[nom_joueur]["couche"] == False):
+            if (boucle_terminee == 0):
+                boucle_terminee = mises_tour[nom_joueur]
+            elif (boucle_terminee != mises_tour[nom_joueur]):
+                break
+            elif (boucle_terminee == mises_tour[nom_joueur]):
+                boucle_terminee = True
+                break
 
     # Affichage des cartes et passage au tour suivant (si tous les joueurs ont atteint la même mise)
     if (boucle_terminee == True):
@@ -388,16 +409,24 @@ def total_relance(event = False):
     canvas.itemconfigure(visible["jetons"]["bleus"], text="x"+ str(joueur_en_cours["jetons"]["bleus"] - b))
     canvas.itemconfigure(visible["jetons"]["noirs"], text="x"+ str(joueur_en_cours["jetons"]["noirs"] - n))
 
+    # Calcul des totaux
     total_jetons += r * 25
     total_jetons += v * 50
     total_jetons += b * 100
     total_jetons += n * 200
-    if (total_jetons == 0 or (total_jetons < mise_initiale*2 and total_jetons != mise_initiale)):
+    tot = total_jetons + mises_tour[joueur_en_cours["nom"]]
+
+    # Modifie le visible (total du joueur)
+    canvas.itemconfigure(visible["total"], text=str(total(joueur_en_cours["nom"]) - total_jetons) + " €") 
+
+    if (total_jetons == 0):
         bouton_relance.configure(text="Relancer", state=DISABLED)
-    elif (total_jetons == mise_initiale):
+    elif (tot == mise_initiale):
         bouton_relance.configure(text="Suivre pour " + str(total_jetons) + " €", state=NORMAL)
-    else:
+    elif (tot >= mise_initiale*2):
         bouton_relance.configure(text="Relancer de " + str(total_jetons) + " €", state=NORMAL)
+    else:
+        bouton_relance.configure(text="Mise insuffisante", state=DISABLED)
     return total_jetons
 
 #---------------------
@@ -405,7 +434,6 @@ def total_relance(event = False):
 #---------------------
 def se_coucher():
     global mises_tour
-    del mises_tour[joueur_en_cours["nom"]]
     joueur_en_cours["couche"] = True
     if (len(mises_tour) == 1): # s'il ne reste plus qu'un joueur, il gagne
         nouvelle_partie()
@@ -418,24 +446,18 @@ def se_coucher():
 def relancer():
     global relance_mise, mises_tour, mise_initiale
     relance_mise = total_jetons
-    if (relance_mise != mise_initiale and relance_mise < mise_initiale*2):
-        messagebox.showerror("Erreur lors de la relance",
-                             "Vous devez miser " + str(mise_initiale - mises_tour[joueur_en_cours["nom"]])
-                             + " € pour suivre ou d'au moins " + str(mise_initiale*2 - mises_tour[joueur_en_cours["nom"]]) + " € pour relancer.")  
-    elif (relance_mise > total(joueur_en_cours["nom"])):
-        messagebox.showerror("Erreur lors de la relance", "Vous n'avez pas assez de jetons pour miser cette somme.")
-    else:
-        if (relance_mise == total(joueur_en_cours["nom"])): # relance de tout ce qu'il possède donc all-in
-            joueur_en_cours["all_in"] = True
-        mise_initiale = relance_mise
-        nouvelle_mise(joueur_en_cours["nom"], {
-                "rouges": scale_jetons_rouges.get(),
-                "verts": scale_jetons_verts.get(),
-                "bleus": scale_jetons_bleus.get(),
-                "noirs": scale_jetons_noirs.get()
-            })
-        mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
-        joueur_suivant()
+    tot = relance_mise + mises_tour[joueur_en_cours["nom"]]
+    if (relance_mise == total(joueur_en_cours["nom"])): # relance de tout ce qu'il possède donc all-in
+        joueur_en_cours["all_in"] = True
+    mise_initiale = relance_mise
+    nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": scale_jetons_rouges.get(),
+            "verts": scale_jetons_verts.get(),
+            "bleus": scale_jetons_bleus.get(),
+            "noirs": scale_jetons_noirs.get()
+        })
+    mises_tour.update({joueur_en_cours["nom"]: mise_initiale + mises_tour[joueur_en_cours["nom"]]})
+    joueur_suivant()
 
 #----------------------
 # Mise tout les jetons
@@ -444,7 +466,7 @@ def all_in():
     global mise_initiale, mises_tour
     joueur_en_cours["all_in"] = True
     bouton_relance.configure(state=DISABLED)
-    mise_initiale = total(joueur_en_cours["nom"]) + mises_tour.get(joueur_en_cours["nom"])
+    mise_initiale = total(joueur_en_cours["nom"]) + mises_tour[joueur_en_cours["nom"]]
     nouvelle_mise(joueur_en_cours["nom"], {
             "rouges": joueur_en_cours["jetons"]["rouges"],
             "verts": joueur_en_cours["jetons"]["verts"],
