@@ -1,5 +1,6 @@
 from random import randrange
 from tkinter import *
+from tkinter import messagebox # pour les alertes
 
 joueurs={}
 joueurs_ordre=[]
@@ -98,9 +99,11 @@ paquetImages = {
 def nouveau_joueur(nom_du_joueur):
     global joueurs, joueurs_ordre
     joueurs.update({nom_du_joueur: {
+        "nom": nom_du_joueur,
         "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
         "main": [], # les cartes que le joueur possède en main
-        "perdu": False
+        "perdu": False,
+        "all_in": False
     }})
     joueurs_ordre.append(nom_du_joueur)
 
@@ -153,10 +156,9 @@ def place_carte(x, y, nom_de_la_carte):
 # Distribue les cartes
 #----------------------
 def distribuer():
-    global paquet,joueurs
+    global paquet, joueurs, tapis
 
     nouveau_paquet()
-    nouvelle_carte()
     for joueur in joueurs.keys():
         joueurs[joueur]["main"]=[nouvelle_carte(),nouvelle_carte()]
 
@@ -183,15 +185,25 @@ def distribuer():
 # Recommence une partie
 #----------------------
 def nouvelle_partie():
-    global tour_joueur,mise_tour
+    global tour_joueur, mises_tour
     nouveau_paquet()
     derniere_mise={}
+    tapis = []
     distribuer()
+
+    # Réinitialisation des boutons
+    bouton_relance.configure(state=NORMAL)
+
+    # Réinitialisation des joueurs et des mises
+    mises_tour = {}
+    for joueur in joueurs.values():
+        joueur["all_in"] = False # réinitialise le all_in
+        joueur["main"] = []
+        if joueur["perdu"] == False:
+            mises_tour.update({joueur["nom"]: 0})
+
     tour_suivant()
-    mise_tour={"Hugo":0,"Yves":0,"Lucien":0}
-    # + retirer les cartes des mains des joueurs
-    # + retirer les cartes sur le tapis
-    # + faire gagner les mises
+    # TODO: + faire gagner les mises
 
 #----------------------
 # Fait perdre un joueur
@@ -199,7 +211,7 @@ def nouvelle_partie():
 def perdu(nom_du_joueur):
     global joueurs
     joueurs[nom_du_joueur]["perdu"] = True
-    del mise_tour[joueurs_ordre[tour]]
+    del mises_tour[joueur_en_cours["nom"]]
 
 #----------------------
 # Fait miser un joueur
@@ -228,7 +240,24 @@ def gagne_la_mise(nom_du_joueur):
 # Passe au tour suivant (joueur suivant)
 #----------------------------------------
 def tour_suivant():
-    global tour, visible
+    global tour, visible, joueur_en_cours, mises_tour
+
+    # Vérifie si tous les joueurs ont atteint la même mise
+    boucle_terminee = 0
+    for loop in mises_tour.keys():
+        if (boucle_terminee == 0):
+            boucle_terminee = mises_tour[loop]
+        elif (boucle_terminee != mises_tour[loop]):
+            break
+        elif (boucle_terminee == mises_tour[loop]):
+            boucle_terminee = True
+            break
+
+    # Affichage des cartes et passage au tour suivant (si tous les joueurs ont atteint la même mise)
+    if (boucle_terminee == True):
+        # TODO: Révélation des cartes et passage au tour suivant
+        messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.")
+        return False
 
     # Passe le tour suivant (+ joueur suivant)
     while True:
@@ -237,9 +266,14 @@ def tour_suivant():
         else: 
             tour += 1
         nom = joueurs_ordre[tour]
-        joueur_suivant = joueurs[nom]
-        if (joueur_suivant["perdu"] == False): 
+        joueur_en_cours = joueurs[nom]
+        if (joueur_en_cours["perdu"] == False): 
             break
+
+    # Passe le tour du joueur s'il a all-in
+    if (joueur_en_cours["all_in"] == True):
+        tour_suivant()
+        return False # stop la procédure tour_suivant() en cours
     
     # Cache le visible
     if (visible != {}):
@@ -255,94 +289,97 @@ def tour_suivant():
         "nom": canvas.create_text(950, 550, text=nom, font=("Purisa",16), anchor="e"),
         "total": canvas.create_text(950, 575, text=str(total(nom)) + " €", font=("Purisa", 12), anchor="e"),
         "jetons": {
-            "rouges": canvas.create_text(340, 445, text="x" + str(joueur_suivant["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
-            "verts" : canvas.create_text(440, 445, text="x" + str(joueur_suivant["jetons"]["verts"]), font=("Purisa",16), fill="white"),
-            "bleus" : canvas.create_text(540, 445, text="x" + str(joueur_suivant["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
-            "noirs" : canvas.create_text(640, 445, text="x" + str(joueur_suivant["jetons"]["noirs"]), font=("Purisa",16), fill="white")
+            "rouges": canvas.create_text(340, 445, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
+            "verts" : canvas.create_text(440, 445, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
+            "bleus" : canvas.create_text(540, 445, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
+            "noirs" : canvas.create_text(640, 445, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
         },
         "main": []
     }
-    for i in range(len(joueur_suivant["main"])):
-        visible["main"].append(place_carte(420+i*80, 500, joueur_suivant["main"][i]))
+    for i in range(len(joueur_en_cours["main"])):
+        visible["main"].append(place_carte(420+i*80, 500, joueur_en_cours["main"][i]))
 
 
 
 #---------------
 # Passe le tour
 #---------------
-def Passer():
-    global Passer, mise_tour
-    perdu(joueurs_ordre[tour])
+def passer():
+    global mises_tour
+    perdu(joueur_en_cours["nom"])
     tour_suivant()
-    print(mise_tour)
+    print(mises_tour)
 
 #----------------------------
 # Suivre le joueur précédent
 #----------------------------
-def Suivre():
-    global Suivre, mise_tour, mise_initiale
-    nouvelle_mise(joueurs_ordre[tour],mise_initiale-mise_tour.get(joueurs_ordre[tour]))#Pour éviter de payer en trop(ex: pour la petite blinde)
-    mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+def suivre():
+    global mises_tour, mise_initiale
+    nouvelle_mise(joueur_en_cours["nom"], mise_initiale - mises_tour.get(joueur_en_cours["nom"]))
+    mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
     tour_suivant()
-    print(mise_tour)
+    print(mises_tour)
 
 #------------------
 # Relance une mise
 #------------------
-def Relancer():
-    global Relancer, relance_mise, mise_tour, mise_initiale
-    relance_mise=int(val.get())
-    mise_initiale = relance_mise
-    nouvelle_mise(joueurs_ordre[tour],mise_initiale-mise_tour.get(joueurs_ordre[tour]))        
-    mise_tour.update({joueurs_ordre[tour]: mise_initiale})
-    tour_suivant()
-    print(mise_tour)
+def relancer():
+    global relance_mise, mises_tour, mise_initiale
+    relance_mise = int(val.get())
+    if (relance_mise < mise_initiale*2):
+        messagebox.showerror("Erreur lors de la relance", "Vous devez relancer d'au moins " + str(mise_initiale*2) + ".")
+    elif (relance_mise > total(joueur_en_cours["nom"])):
+        messagebox.showerror("Erreur lors de la relance", "Vous n'avez pas assez de jetons pour miser cette somme.")
+    else:
+        mise_initiale = relance_mise
+        nouvelle_mise(joueur_en_cours["nom"], mise_initiale - mises_tour.get(joueur_en_cours["nom"]))        
+        mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
+        tour_suivant()
+        print(mises_tour)
 
 #----------------------
 # Mise tout les jetons
 #----------------------
-def All_in(): # TODO: Forcer le all-in aux autres joueurs ou passer
-    global All_in, mise_initiale, mise_tour
-    mise_initiale = total(joueurs_ordre[tour])+mise_tour.get(joueurs_ordre[tour])
-    nouvelle_mise(joueurs_ordre[tour],mise_initiale-mise_tour.get(joueurs_ordre[tour])) # mise tous les jetons
-    mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+def all_in():
+    global mise_initiale, mises_tour, joueur_en_cours
+    joueur_en_cours["all_in"] = True
+    bouton_relance.configure(state=DISABLED)
+    
+    mise_initiale = total(joueur_en_cours["nom"]) + mises_tour.get(joueur_en_cours["nom"])
+    nouvelle_mise(joueur_en_cours["nom"], mise_initiale - mises_tour.get(joueur_en_cours["nom"])) # mise tous les jetons
+    mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
     tour_suivant()
-    print(mise_tour)
+    print(mises_tour)
 
 #-------
 # Check
 #-------
-def Check():
-    global Check
+def check():
+    global mise_initiale
     mise_initiale=0
-    if mise_initiale==0:
-        bouton_check.config(state=NORMAL)#Possibilié de check
-    else:
-        bouton_check.config(state=DISABLED)
     tour_suivant()
-    print(mise_tour)
+    print(mises_tour)
 
 #------------------------------------
 # Mise de la grosse et petite blinde
 #------------------------------------
 def position_des_blindes():
     
-    if mise_initiale/2 > total(joueurs_ordre[tour])/2:
-        perdu(joueurs_ordre[tour]) # ou all-in, je sais pas trop quoi mettre
+    if mise_initiale/2 > total(joueur_en_cours["nom"])/2:
+        perdu(joueur_en_cours["nom"])
     else:
-        nouvelle_mise(joueurs_ordre[tour],mise_initiale/2) # petite blinde
-        mise_tour.update({joueurs_ordre[tour]: mise_initiale/2})
+        nouvelle_mise(joueur_en_cours["nom"], mise_initiale/2) # petite blinde
+        mises_tour.update({joueur_en_cours["nom"]: mise_initiale/2})
                     # ici la syntaxe est surment a changer mais le but et de connaitre
                     # la mise d'un joueur pour le tour de table
     tour_suivant()
 
-    if mise_initiale > total(joueurs_ordre[tour]):
-        perdu(joueurs_ordre[tour]) # idem
+    if mise_initiale > total(joueur_en_cours["nom"]):
+        perdu(joueur_en_cours["nom"]) # idem
     else:
-        nouvelle_mise(joueurs_ordre[tour],mise_initiale) # grosse blinde
-        mise_tour.update({joueurs_ordre[tour]: mise_initiale})
+        nouvelle_mise(joueur_en_cours["nom"], mise_initiale) # grosse blinde
+        mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
 
-    save_de_la_mi=mise_initiale # on sauvegarde pour apres le flop (au cas d'une relance)
     tour_suivant()    
     
     
@@ -350,19 +387,19 @@ def position_des_blindes():
     
 #------------------------------------------------------------------------------------------
 
-bouton_passer=Button(fen,text='Passer',command=Passer)
+bouton_passer=Button(fen,text='Passer',command=passer)
 bouton_passer.pack()
-bouton_suivre=Button(fen,text='Suivre',command=Suivre)
+bouton_suivre=Button(fen,text='Suivre',command=suivre)
 bouton_suivre.pack()
-bouton_check=Button(fen,text='Check',state=DISABLED,command=Check)
+bouton_check=Button(fen,text='Check',state=DISABLED,command=check)
 bouton_check.pack()
-bouton_allin=Button(fen,text='All-in',command=All_in)
+bouton_allin=Button(fen,text='All-in',command=all_in)
 bouton_allin.pack()
 val=DoubleVar()
 Scale1=Scale(fen, orient='vertical', from_=0, to=1000,resolution=25,tickinterval=200,
              length=125,label='Relance',variable=val)
 Scale1.pack()
-bouton_relance=Button(fen,text='Relancer',command=Relancer)
+bouton_relance=Button(fen,text='Relancer',command=relancer)
 bouton_relance.pack()
 
 mise_initiale=50
