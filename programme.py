@@ -4,7 +4,7 @@ from tkinter import messagebox # pour les alertes
 
 joueurs={}
 joueurs_ordre=[]
-tour = -1
+ordre = -1
 tapis=[]
 mises={}
 visible={}
@@ -103,6 +103,7 @@ def nouveau_joueur(nom_du_joueur):
         "jetons": {"rouges":8,"verts":4,"bleus":2,"noirs":2},
         "main": [], # les cartes que le joueur possède en main
         "perdu": False,
+        "passe": False,
         "all_in": False
     }})
     joueurs_ordre.append(nom_du_joueur)
@@ -185,24 +186,33 @@ def distribuer():
 # Recommence une partie
 #----------------------
 def nouvelle_partie():
-    global tour_joueur, mises_tour
+    global mises_tour, mises
     nouveau_paquet()
-    derniere_mise={}
     tapis = []
-    distribuer()
+    derniere_mise={}
 
     # Réinitialisation des boutons
     bouton_relance.configure(state=NORMAL)
 
     # Réinitialisation des joueurs et des mises
     mises_tour = {}
+    mises = {}
     for joueur in joueurs.values():
-        joueur["all_in"] = False # réinitialise le all_in
-        joueur["main"] = []
+        joueur["all_in"] = False  # réinitialise le all_in
+        joueur["couche"] = False   # les joueurs ayant passé peuvent rejouer
+        joueur["main"] = []       # vide la main
         if joueur["perdu"] == False:
-            mises_tour.update({joueur["nom"]: 0})
+            mises_tour.update({joueur["nom"]: 0}) # remets uniquement les joueurs n'ayant pas perdu
+            mises.update({joueur["nom"]: {
+                    "rouges": 0,
+                    "verts": 0,
+                    "bleus": 0,
+                    "noirs": 0
+                }})
 
-    tour_suivant()
+    distribuer()
+    joueur_suivant()
+    position_des_blindes()
     # TODO: + faire gagner les mises
 
 #----------------------
@@ -216,12 +226,15 @@ def perdu(nom_du_joueur):
 #----------------------
 # Fait miser un joueur
 #----------------------
-def nouvelle_mise(nom_du_joueur, n):
+def nouvelle_mise(nom_du_joueur, mise):
     global joueurs, mises
-    mise={"rouges":int(n%200%50/25),"verts":int(n%200%100/50), "bleus":int(n%200/100), "noirs":int(n/200)}
     
-    mises.update({nom_du_joueur: mise})
-    derniere_mise = mise
+    mises.update({nom_du_joueur: {
+            "rouges": mises[nom_du_joueur]["rouges"] + mise["rouges"],
+            "verts": mises[nom_du_joueur]["verts"] + mise["verts"],
+            "bleus": mises[nom_du_joueur]["bleus"] + mise["bleus"],
+            "noirs": mises[nom_du_joueur]["noirs"] + mise["noirs"],
+        }})
     for couleur, nbr in mise.items():
         joueurs[nom_du_joueur]["jetons"][couleur] -= nbr
 
@@ -236,11 +249,88 @@ def gagne_la_mise(nom_du_joueur):
             joueurs[nom_du_joueur]["jetons"][couleur] += nbr
     mises={}
 
-#----------------------------------------
-# Passe au tour suivant (joueur suivant)
-#----------------------------------------
-def tour_suivant():
-    global tour, visible, joueur_en_cours, mises_tour
+#--------------------
+# Affiche le visible
+#--------------------
+def affiche_visible():
+    global visible
+    
+    # Cache l'ancien visible
+    if (visible != {}):
+        canvas.delete(visible["nom"])
+        canvas.delete(visible["total"])
+        for main in visible["main"]:
+            canvas.delete(visible["main"])
+        for key in visible["jetons"].keys():
+            canvas.delete(visible["jetons"][key])
+        for score in visible["scoreboard"]:
+            canvas.delete(score)
+    
+    # Affiche le visible du joueur en cours
+    visible = {
+        "nom": canvas.create_text(960, 540, text=joueur_en_cours["nom"], font=("Purisa",18), fill="white", anchor="e"),
+        "total": canvas.create_text(960, 565, text=str(total(joueur_en_cours["nom"])) + " €", font=("Purisa", 14), fill="white", anchor="e"),
+        "jetons": {
+            "rouges": canvas.create_text(340, 445, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
+            "verts" : canvas.create_text(440, 445, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
+            "bleus" : canvas.create_text(540, 445, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
+            "noirs" : canvas.create_text(640, 445, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
+        },
+        "main": [],
+        "scoreboard": []
+    }
+    i = 0
+    for joueur in joueurs.values():
+        i += 1
+        visible["scoreboard"].append(canvas.create_text(30, 590-i*25, text=joueur["nom"] + ": " + str(total(joueur["nom"])) + " €",
+                                                        font=("Purisa", 14), fill="white", anchor="w"))
+        visible["main"].append(place_carte(420, 500, joueur_en_cours["main"][0]))
+        visible["main"].append(place_carte(500, 500, joueur_en_cours["main"][1]))
+
+#------------------------------------------
+# Mets à jour les status des boutons etc..
+#------------------------------------------
+def status_boutons():
+    bouton_relance.configure(text="Relancer", state=DISABLED)
+    # Valeurs par défaut
+    scale_jetons_rouges.set(0)
+    scale_jetons_verts.set(0)
+    scale_jetons_bleus.set(0)
+    scale_jetons_noirs.set(0)
+    # Maximum
+    scale_jetons_rouges.configure(to=joueur_en_cours["jetons"]["rouges"])
+    scale_jetons_verts.configure(to=joueur_en_cours["jetons"]["verts"])
+    scale_jetons_bleus.configure(to=joueur_en_cours["jetons"]["bleus"])
+    scale_jetons_noirs.configure(to=joueur_en_cours["jetons"]["noirs"])
+    # Possibilité de miser ou non les jetons en question
+    if (joueur_en_cours["jetons"]["rouges"] > 0):
+        scale_jetons_rouges.configure(state=NORMAL)
+    else:
+        scale_jetons_rouges.configure(state=DISABLED)
+        
+    if (joueur_en_cours["jetons"]["verts"] > 0):
+        scale_jetons_verts.configure(state=NORMAL)
+    else:
+        scale_jetons_verts.configure(state=DISABLED)
+
+    if (joueur_en_cours["jetons"]["bleus"] > 0):
+        scale_jetons_bleus.configure(state=NORMAL)
+    else:
+        scale_jetons_bleus.configure(state=DISABLED)
+    
+    if (joueur_en_cours["jetons"]["noirs"] > 0):
+        scale_jetons_noirs.configure(state=NORMAL)
+    else:
+        scale_jetons_noirs.configure(state=DISABLED)
+
+
+#-------------------------
+# Passe au joueur suivant
+#-------------------------
+def joueur_suivant():
+    global ordre, joueur_en_cours, mises_tour, total_jetons
+
+    total_jetons = 0
 
     # Vérifie si tous les joueurs ont atteint la même mise
     boucle_terminee = 0
@@ -256,100 +346,113 @@ def tour_suivant():
     # Affichage des cartes et passage au tour suivant (si tous les joueurs ont atteint la même mise)
     if (boucle_terminee == True):
         # TODO: Révélation des cartes et passage au tour suivant
-        messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.")
+        affiche_visible()
+        status_boutons()
+        messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.\n(suite du programme prochainement...)")
         return False
 
-    # Passe le tour suivant (+ joueur suivant)
+    # Cherche le joueur suivant (+ passe numéro d'ordre suivant)
     while True:
-        if (tour >= len(joueurs)-1):
-            tour = 0
+        if (ordre >= len(joueurs)-1):
+            ordre = 0
         else: 
-            tour += 1
-        nom = joueurs_ordre[tour]
+            ordre += 1
+        nom = joueurs_ordre[ordre]
         joueur_en_cours = joueurs[nom]
-        if (joueur_en_cours["perdu"] == False): 
+        if (joueur_en_cours["perdu"] == False and joueur_en_cours["couche"] == False): 
             break
 
     # Passe le tour du joueur s'il a all-in
     if (joueur_en_cours["all_in"] == True):
-        tour_suivant()
-        return False # stop la procédure tour_suivant() en cours
-    
-    # Cache le visible
-    if (visible != {}):
-        canvas.delete(visible["nom"])
-        canvas.delete(visible["total"])
-        for i in range(len(visible["main"])):
-            canvas.delete(visible["main"][i])
-        for key in visible["jetons"].keys():
-            canvas.delete(visible["jetons"][key])
-    
-    # Affiche le visible du joueur suivant
-    visible = {
-        "nom": canvas.create_text(950, 550, text=nom, font=("Purisa",16), anchor="e"),
-        "total": canvas.create_text(950, 575, text=str(total(nom)) + " €", font=("Purisa", 12), anchor="e"),
-        "jetons": {
-            "rouges": canvas.create_text(340, 445, text="x" + str(joueur_en_cours["jetons"]["rouges"]), font=("Purisa",16), fill="white"),
-            "verts" : canvas.create_text(440, 445, text="x" + str(joueur_en_cours["jetons"]["verts"]), font=("Purisa",16), fill="white"),
-            "bleus" : canvas.create_text(540, 445, text="x" + str(joueur_en_cours["jetons"]["bleus"]), font=("Purisa",16), fill="white"),
-            "noirs" : canvas.create_text(640, 445, text="x" + str(joueur_en_cours["jetons"]["noirs"]), font=("Purisa",16), fill="white")
-        },
-        "main": []
-    }
-    for i in range(len(joueur_en_cours["main"])):
-        visible["main"].append(place_carte(420+i*80, 500, joueur_en_cours["main"][i]))
+        joueur_suivant()
+        return False # stop la procédure joueur_suivant() en cours
+
+    affiche_visible()
+    status_boutons()
 
 
+#--------------------------------------------
+# Récupère et affiche le total de la relance
+#--------------------------------------------
+def total_relance(event = False):
+    global visible, total_jetons
+    total_jetons = 0
+    r = scale_jetons_rouges.get()
+    v = scale_jetons_verts.get()
+    b = scale_jetons_bleus.get()
+    n = scale_jetons_noirs.get()
 
-#---------------
-# Passe le tour
-#---------------
-def passer():
+    # Modifie le visible (nombre de jetons)
+    canvas.itemconfigure(visible["jetons"]["rouges"], text="x"+ str(joueur_en_cours["jetons"]["rouges"] - r))
+    canvas.itemconfigure(visible["jetons"]["verts"], text="x"+ str(joueur_en_cours["jetons"]["verts"] - v))
+    canvas.itemconfigure(visible["jetons"]["bleus"], text="x"+ str(joueur_en_cours["jetons"]["bleus"] - b))
+    canvas.itemconfigure(visible["jetons"]["noirs"], text="x"+ str(joueur_en_cours["jetons"]["noirs"] - n))
+
+    total_jetons += r * 25
+    total_jetons += v * 50
+    total_jetons += b * 100
+    total_jetons += n * 200
+    if (total_jetons == 0 or (total_jetons < mise_initiale*2 and total_jetons != mise_initiale)):
+        bouton_relance.configure(text="Relancer", state=DISABLED)
+    elif (total_jetons == mise_initiale):
+        bouton_relance.configure(text="Suivre pour " + str(total_jetons) + " €", state=NORMAL)
+    else:
+        bouton_relance.configure(text="Relancer de " + str(total_jetons) + " €", state=NORMAL)
+    return total_jetons
+
+#---------------------
+# Le joueur se couche
+#---------------------
+def se_coucher():
     global mises_tour
-    perdu(joueur_en_cours["nom"])
-    tour_suivant()
-    print(mises_tour)
-
-#----------------------------
-# Suivre le joueur précédent
-#----------------------------
-def suivre():
-    global mises_tour, mise_initiale
-    nouvelle_mise(joueur_en_cours["nom"], mise_initiale - mises_tour.get(joueur_en_cours["nom"]))
-    mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
-    tour_suivant()
-    print(mises_tour)
+    del mises_tour[joueur_en_cours["nom"]]
+    joueur_en_cours["couche"] = True
+    if (len(mises_tour) == 1): # s'il ne reste plus qu'un joueur, il gagne
+        nouvelle_partie()
+    else:
+        joueur_suivant()
 
 #------------------
 # Relance une mise
 #------------------
 def relancer():
     global relance_mise, mises_tour, mise_initiale
-    relance_mise = int(val.get())
-    if (relance_mise < mise_initiale*2):
-        messagebox.showerror("Erreur lors de la relance", "Vous devez relancer d'au moins " + str(mise_initiale*2) + ".")
+    relance_mise = total_jetons
+    if (relance_mise != mise_initiale and relance_mise < mise_initiale*2):
+        messagebox.showerror("Erreur lors de la relance",
+                             "Vous devez miser " + str(mise_initiale - mises_tour[joueur_en_cours["nom"]])
+                             + " € pour suivre ou d'au moins " + str(mise_initiale*2 - mises_tour[joueur_en_cours["nom"]]) + " € pour relancer.")  
     elif (relance_mise > total(joueur_en_cours["nom"])):
         messagebox.showerror("Erreur lors de la relance", "Vous n'avez pas assez de jetons pour miser cette somme.")
     else:
+        if (relance_mise == total(joueur_en_cours["nom"])): # relance de tout ce qu'il possède donc all-in
+            joueur_en_cours["all_in"] = True
         mise_initiale = relance_mise
-        nouvelle_mise(joueur_en_cours["nom"], mise_initiale - mises_tour.get(joueur_en_cours["nom"]))        
+        nouvelle_mise(joueur_en_cours["nom"], {
+                "rouges": scale_jetons_rouges.get(),
+                "verts": scale_jetons_verts.get(),
+                "bleus": scale_jetons_bleus.get(),
+                "noirs": scale_jetons_noirs.get()
+            })
         mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
-        tour_suivant()
-        print(mises_tour)
+        joueur_suivant()
 
 #----------------------
 # Mise tout les jetons
 #----------------------
 def all_in():
-    global mise_initiale, mises_tour, joueur_en_cours
+    global mise_initiale, mises_tour
     joueur_en_cours["all_in"] = True
     bouton_relance.configure(state=DISABLED)
-    
     mise_initiale = total(joueur_en_cours["nom"]) + mises_tour.get(joueur_en_cours["nom"])
-    nouvelle_mise(joueur_en_cours["nom"], mise_initiale - mises_tour.get(joueur_en_cours["nom"])) # mise tous les jetons
+    nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": joueur_en_cours["jetons"]["rouges"],
+            "verts": joueur_en_cours["jetons"]["verts"],
+            "bleus": joueur_en_cours["jetons"]["bleus"],
+            "noirs": joueur_en_cours["jetons"]["noirs"]
+        })
     mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
-    tour_suivant()
-    print(mises_tour)
+    joueur_suivant()
 
 #-------
 # Check
@@ -357,49 +460,106 @@ def all_in():
 def check():
     global mise_initiale
     mise_initiale=0
-    tour_suivant()
-    print(mises_tour)
+    joueur_suivant()
 
 #------------------------------------
 # Mise de la grosse et petite blinde
 #------------------------------------
 def position_des_blindes():
+
+    # PETITE BLINDE
+    if (joueur_en_cours["jetons"]["rouges"] >= 1): # Mise par rouge (défaut)
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 1, "verts": 0,
+            "bleus": 0, "noirs": 0
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 25})
+    elif (joueur_en_cours["jetons"]["verts"] >= 1): # Mise par vert si plus de rouges
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 0, "verts": 1,
+            "bleus": 0, "noirs": 0
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 50})
+    elif (joueur_en_cours["jetons"]["bleus"] >= 1): # Mise par bleu si plus de verts
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 0, "verts": 0,
+            "bleus": 1, "noirs": 0
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 100})
+    elif (joueur_en_cours["jetons"]["noirs"] >= 1): # Mise par noir si plus de bleus
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 0, "verts": 0,
+            "bleus": 0, "noirs": 1
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 200})
+    else:
+        joueur_en_cours["perdu"] = True
     
-    if mise_initiale/2 > total(joueur_en_cours["nom"])/2:
-        perdu(joueur_en_cours["nom"])
-    else:
-        nouvelle_mise(joueur_en_cours["nom"], mise_initiale/2) # petite blinde
-        mises_tour.update({joueur_en_cours["nom"]: mise_initiale/2})
-                    # ici la syntaxe est surment a changer mais le but et de connaitre
-                    # la mise d'un joueur pour le tour de table
-    tour_suivant()
+    joueur_suivant()
 
-    if mise_initiale > total(joueur_en_cours["nom"]):
-        perdu(joueur_en_cours["nom"]) # idem
-    else:
-        nouvelle_mise(joueur_en_cours["nom"], mise_initiale) # grosse blinde
-        mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
+    # GROSSE BLINDE
+    if (joueur_en_cours["jetons"]["rouges"] >= 2): # Mise par rouges (défaut)
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 2, "verts": 0,
+            "bleus": 0, "noirs": 0
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 50})
+    elif (joueur_en_cours["jetons"]["verts"] >= 1): # Mise par vert si plus de rouges
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 0, "verts": 1,
+            "bleus": 0, "noirs": 0
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 50})
+    elif (joueur_en_cours["jetons"]["bleus"] >= 1): # Mise par bleu si plus de verts
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 0, "verts": 0,
+            "bleus": 1, "noirs": 0
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 100})
+    elif (joueur_en_cours["jetons"]["noirs"] >= 1): # Mise par noir si plus de bleus
+        nouvelle_mise(joueur_en_cours["nom"], {
+            "rouges": 0, "verts": 0,
+            "bleus": 0, "noirs": 1
+        })
+        mises_tour.update({joueur_en_cours["nom"]: 200})
 
-    tour_suivant()    
+    # INFO: La grosse blinde ne perd pas car elle peut encore avoir un jeton rouge
+    joueur_suivant()    
     
     
     
     
 #------------------------------------------------------------------------------------------
 
-bouton_passer=Button(fen,text='Passer',command=passer)
-bouton_passer.pack()
-bouton_suivre=Button(fen,text='Suivre',command=suivre)
-bouton_suivre.pack()
-bouton_check=Button(fen,text='Check',state=DISABLED,command=check)
+bouton_se_coucher=Button(fen,text="Se coucher", command=se_coucher)
+bouton_se_coucher.pack()
+bouton_check=Button(fen,text="Check", state=DISABLED, command=check)
 bouton_check.pack()
-bouton_allin=Button(fen,text='All-in',command=all_in)
-bouton_allin.pack()
-val=DoubleVar()
-Scale1=Scale(fen, orient='vertical', from_=0, to=1000,resolution=25,tickinterval=200,
-             length=125,label='Relance',variable=val)
-Scale1.pack()
-bouton_relance=Button(fen,text='Relancer',command=relancer)
+bouton_all_in=Button(fen,text="All-in", command=all_in)
+bouton_all_in.pack()
+
+# Barres de relance
+jetons_rouges = IntVar()
+scale_jetons_rouges = Scale(fen, orient="horizontal", from_=0, to=8, length=175, label="Jetons rouges", variable=jetons_rouges,
+                            resolution=1, tickinterval=1, command=total_relance)
+scale_jetons_rouges.pack()
+
+jetons_verts = IntVar()
+scale_jetons_verts = Scale(fen, orient="horizontal", from_=0, to=4, length=150, label="Jetons verts", variable=jetons_verts,
+                           resolution=1, tickinterval=1, command=total_relance)
+scale_jetons_verts.pack()
+
+jetons_bleus = IntVar()
+scale_jetons_bleus = Scale(fen, orient="horizontal", from_=0, to=2, length=125, label="Jetons bleus", variable=jetons_bleus,
+                           resolution=1, tickinterval=1, command=total_relance)
+scale_jetons_bleus.pack()
+
+jetons_noirs = IntVar()
+scale_jetons_noirs = Scale(fen, orient="horizontal", from_=0, to=2, length=125, label="Jetons noirs", variable=jetons_noirs,
+                           resolution=1, tickinterval=1, command=total_relance)
+scale_jetons_noirs.pack()
+
+bouton_relance=Button(fen,text="Relancer", command=relancer, state=DISABLED)
 bouton_relance.pack()
 
 mise_initiale=50
@@ -409,6 +569,5 @@ nouveau_joueur("Yves")
 nouveau_joueur("Lucien")
 
 nouvelle_partie()
-position_des_blindes()
 
 fen.mainloop()
