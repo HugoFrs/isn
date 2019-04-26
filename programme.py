@@ -104,7 +104,8 @@ def nouveau_joueur(nom_du_joueur):
         "main": [], # les cartes que le joueur possède en main
         "perdu": False,
         "couche": False,
-        "all_in": False
+        "all_in": False,
+        "check": False
     }})
     joueurs_ordre.append(nom_du_joueur)
 
@@ -199,7 +200,7 @@ def nouvelle_partie():
     mises = {}
     for joueur in joueurs.values():
         joueur["all_in"] = False  # réinitialise le all_in
-        joueur["couche"] = False   # les joueurs ayant passé peuvent rejouer
+        joueur["couche"] = False  # les joueurs ayant passé peuvent rejouer
         joueur["main"] = []       # vide la main
         if joueur["perdu"] == False:
             mises_tour.update({joueur["nom"]: 0}) # remets uniquement les joueurs n'ayant pas perdu
@@ -357,35 +358,53 @@ def status_boutons():
         scale_jetons_noirs.configure(state=NORMAL)
     else:
         scale_jetons_noirs.configure(state=DISABLED)
+    # Possibilité de check
+    bouton_check.configure(state=NORMAL)
+    for mise in mises_tour.values():
+        if (mise != 0):
+            bouton_check.configure(state=DISABLED)
 
+
+#--------------------------------------------
+# Vérifie la fin de la boucle par les checks
+#--------------------------------------------
+def testCheck(boucle_terminee):
+    if (joueurs[joueurs_ordre[ordre-2]]["check"] == True) and (joueurs[joueurs_ordre[ordre-1]]["check"] == True) and (joueurs[joueurs_ordre[ordre]]["check"] == True):
+        boucle_terminee = True      
+
+    return boucle_terminee
 
 #-------------------------
 # Passe au joueur suivant
 #-------------------------
 def joueur_suivant():
-    global ordre, joueur_en_cours, mises_tour, total_jetons
-
+    global ordre, joueur_en_cours, mises_tour, total_jetons, joueurs_ordre
+    
     total_jetons = 0
 
     # Vérifie si tous les joueurs ont atteint la même mise
-    boucle_terminee = 0
+    boucle_terminee = False
     for nom_joueur in mises_tour.keys():
         if (joueurs[nom_joueur]["couche"] == False):
-            if (boucle_terminee == 0):
+            if (boucle_terminee == False):
                 boucle_terminee = mises_tour[nom_joueur]
-            elif (boucle_terminee != mises_tour[nom_joueur]):
+                boucle_terminee = testCheck(boucle_terminee)
+
+            elif (boucle_terminee != mises_tour[nom_joueur]) and (boucle_terminee != joueurs_ordre[ordre-2]):
+                bouton_check.configure(state=DISABLED)
                 break
-            elif (boucle_terminee == mises_tour[nom_joueur]):
+            
+            elif (boucle_terminee == mises_tour[nom_joueur]) and (boucle_terminee == mises_tour[joueurs_ordre[ordre-2]]):
                 boucle_terminee = True
                 break
 
     # Affichage des cartes et passage au tour suivant (si tous les joueurs ont atteint la même mise)
     if (boucle_terminee == True):
-        # TODO: Révélation des cartes et passage au tour suivant
         affiche_visible()
         status_boutons()
-        messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.\n(suite du programme prochainement...)")
-        return False
+        messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.")
+        revelation_carte()
+        return False # stop la procédure joueur_suivant() en cours
 
     # Cherche le joueur suivant (+ passe numéro d'ordre suivant)
     while True:
@@ -407,6 +426,43 @@ def joueur_suivant():
     status_boutons()
 
 
+#--------------------------------
+# Révèle les cartes sur le tapis
+#--------------------------------
+def revelation_carte():
+    global flop, turn, river, jeu_fini
+    
+    if jeu_fini == True:
+        messagebox.showinfo("INFORMATION", "FIN DU JEU")
+        jeu_fini = False
+        
+    elif river == True:
+        place_carte(680,110, tapis[4])
+        bouton_check.configure(state=NORMAL)
+        jeu_fini = True
+        river = False
+        
+        
+    elif turn == True:
+        place_carte(580,110, tapis[3])
+        bouton_check.configure(state=NORMAL)
+        turn = False
+        river=True
+   
+    elif flop == True:
+        for i in range(3):
+            place_carte(260+i*100,110, tapis[i])
+        bouton_check.configure(state=NORMAL)
+        flop = False
+        turn=True
+    
+    for nom_joueur in mises_tour.keys():
+        joueurs[nom_joueur]["check"]= False
+        mises_tour[nom_joueur]=0
+
+    affiche_visible()
+    mise_initiale=0
+        
 #--------------------------------------------
 # Récupère et affiche le total de la relance
 #--------------------------------------------
@@ -495,6 +551,7 @@ def all_in():
 #-------
 def check():
     global mise_initiale
+    joueur_en_cours["check"] = True
     mise_initiale=0
     joueur_suivant()
 
@@ -599,6 +656,11 @@ bouton_relance=Button(fen,text="Relancer", command=relancer, state=DISABLED)
 bouton_relance.pack()
 
 mise_initiale=50
+flop=True
+turn=False
+river=False
+jeu_fini=False
+
 
 nouveau_joueur("Hugo")
 nouveau_joueur("Yves")
