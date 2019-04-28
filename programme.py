@@ -1,6 +1,7 @@
 from random import randrange
 from tkinter import *
 from tkinter import messagebox # pour les alertes
+import sys
 
 joueurs={}
 joueurs_ordre=[]
@@ -8,7 +9,6 @@ ordre = -1
 tapis=[]
 mises={}
 visible={}
-derniere_mise={}
 
 fen = Tk()
 fen.title("Poker")
@@ -31,10 +31,6 @@ canvas.create_image(610, 240, anchor=NW, image=jetonsImages["noir"])
 paquetImages = {
     "dos_de_carte":  PhotoImage(file="dos_de_carte.png"),
     
-    "as_de_carreau": PhotoImage(file="as_de_carreau.png"),
-    "as_de_coeur":   PhotoImage(file="as_de_coeur.png"),
-    "as_de_pic":     PhotoImage(file="as_de_pic.png"),
-    "as_de_trefle":  PhotoImage(file="as_de_trefle.png"),
     "2_de_carreau":  PhotoImage(file="2_de_carreau.png"),
     "2_de_coeur":    PhotoImage(file="2_de_coeur.png"),
     "2_de_pic":      PhotoImage(file="2_de_pic.png"),
@@ -89,6 +85,11 @@ paquetImages = {
     "roi_de_coeur":     PhotoImage(file="roi_de_coeur.png"),
     "roi_de_pic":       PhotoImage(file="roi_de_pic.png"),
     "roi_de_trefle":    PhotoImage(file="roi_de_trefle.png"),
+
+    "as_de_carreau": PhotoImage(file="as_de_carreau.png"),
+    "as_de_coeur":   PhotoImage(file="as_de_coeur.png"),
+    "as_de_pic":     PhotoImage(file="as_de_pic.png"),
+    "as_de_trefle":  PhotoImage(file="as_de_trefle.png"),
 }
 
 #------------------------------------------------------------------------------------------
@@ -105,7 +106,9 @@ def nouveau_joueur(nom_du_joueur):
         "perdu": False,
         "couche": False,
         "all_in": False,
-        "check": False
+        "check": False,
+        "combinaisons" : {},
+        "valeur_cartes": 0
     }})
     joueurs_ordre.append(nom_du_joueur)
 
@@ -187,10 +190,10 @@ def distribuer():
 # Recommence une partie
 #----------------------
 def nouvelle_partie():
-    global mises_tour, mises
+    global mises_tour, mises, ordre, joueur_en_cours, mise_initiale
     nouveau_paquet()
     tapis = []
-    derniere_mise={}
+    mise_initiale = 50
 
     # Réinitialisation des boutons
     bouton_relance.configure(state=NORMAL)
@@ -199,9 +202,11 @@ def nouvelle_partie():
     mises_tour = {}
     mises = {}
     for joueur in joueurs.values():
-        joueur["all_in"] = False  # réinitialise le all_in
-        joueur["couche"] = False  # les joueurs ayant passé peuvent rejouer
-        joueur["main"] = []       # vide la main
+        joueur["all_in"] = False    # réinitialise le all_in
+        joueur["couche"] = False    # les joueurs ayant passé peuvent rejouer
+        joueur["main"] = []         # vide la main
+        joueur["combinaisons"] = {} # réinitialise les combinaisons
+        joueur["valeur_cartes"] = 0 # réinitialise la valeur des cartes
         if joueur["perdu"] == False:
             mises_tour.update({joueur["nom"]: 0}) # remets uniquement les joueurs n'ayant pas perdu
             mises.update({joueur["nom"]: {
@@ -211,10 +216,214 @@ def nouvelle_partie():
                     "noirs": 0
                 }})
 
+    if (len(mises_tour) == 1):
+        messagebox.showinfo("Fin du jeu !", "Il ne reste plus qu'un joueur, la session est donc terminée.")
+        fen.destroy()
+        sys.exit()
+
+    # Cherche le premier joueur
+    while True:
+        if (ordre >= len(joueurs)-1):
+            ordre = 0
+        else: 
+            ordre += 1
+        nom = joueurs_ordre[ordre]
+        joueur_en_cours = joueurs[nom]
+        if (joueur_en_cours["perdu"] == False and joueur_en_cours["couche"] == False): 
+            break
+
     distribuer()
-    joueur_suivant()
+    affiche_visible()
     position_des_blindes()
-    # TODO: + faire gagner les mises
+
+
+#----------------
+# Cloture le jeu
+#----------------
+def fin_jeu():
+    # CALCUL DES COMBINAISONS ET VALEURS DE CARTES
+    for joueur in joueurs.values():
+        if (joueur["couche"] == False):
+            toutes_les_cartes = tapis + joueur["main"]
+            cartes_tri = tri(toutes_les_cartes)
+            joueur["combinaisons"] = combinaisons(cartes_tri)
+            joueur["valeur_cartes"] = valeur_cartes(cartes_tri)
+
+    gagnant = None
+    for joueur in joueurs.values():
+        if (joueur["couche"] == False and (joueur["perdu"] == False or joueur["all_in"] == True)):
+            if (gagnant == None):
+                gagnant = joueur
+            else:
+                jc = joueur["combinaisons"]
+                gc = gagnant["combinaisons"]
+                # COMPARAISON PAR COMBINAISONS
+                if (jc["quinte_flush_royale"] > gc["quinte_flush_royale"]):
+                    gagnant = joueur
+                elif (jc["quinte_flush_royale"] < gc["quinte_flush_royale"]):
+                    gagnant = gagnant
+                elif (jc["quinte_flush"] > gc["quinte_flush"]):
+                    gagnant = joueur
+                elif (jc["quinte_flush"] < gc["quinte_flush"]):
+                    gagnant = gagnant
+                elif (jc["carre"] > gc["carre"]):
+                    gagnant = joueur
+                elif (jc["carre"] < gc["carre"]):
+                    gagnant = gagnant
+                elif (jc["full"] > gc["full"]):
+                    gagnant = joueur
+                elif (jc["full"] < gc["full"]):
+                    gagnant = gagnant
+                elif (jc["couleur"] > gc["couleur"]):
+                    gagnant = joueur
+                elif (jc["couleur"] < gc["couleur"]):
+                    gagnant = gagnant
+                elif (jc["suite"] > gc["suite"]):
+                    gagnant = joueur
+                elif (jc["suite"] < gc["suite"]):
+                    gagnant = gagnant
+                elif (jc["suite"] == gc["suite"] and jc["suite"] != 0):
+                    if (jc["suite_meilleure_valeur"] > gc["suite_meilleure_valeur"]):
+                        gagnant = joueur
+                elif (jc["brelan"] < gc["brelan"]):
+                    gagnant = gagnant
+                elif (jc["brelan"] > gc["brelan"]):
+                    gagnant = joueur
+                elif (jc["paire"] < gc["paire"]):
+                    gagnant = gagnant
+                elif (jc["paire"] > gc["paire"]):
+                    gagnant = joueur
+                else:
+                    # COMBINAISONS EGALES DONC COMPARAISON PAR VALEUR CARTES
+                    if (joueur["valeur_cartes"] > gagnant["valeur_cartes"]):
+                        gagnant = joueur
+
+    gagne_la_mise(gagnant)
+    nouvelle_partie()
+
+#----------------
+# Tri les cartes
+#----------------
+def tri(cartes):
+    t = {
+        "2": [],
+        "3": [],
+        "4": [],
+        "5": [],
+        "6": [],
+        "7": [],
+        "8": [],
+        "9": [],
+        "10": [],
+        "valet": [],
+        "reine": [],
+        "roi": [],
+        "as": [],
+        "carreau": [],
+        "coeur": [],
+        "pic": [],
+        "trefle": [],
+    }
+    for carte in cartes:
+        for key in t.keys():
+            if (carte.startswith(key) or carte.endswith(key)):
+                t[key].append(carte)
+    return t
+
+#------------------------------------
+# Calcule les points par combinaison
+#------------------------------------
+def combinaisons(cartes_tri):
+    cartes_ordre = list(paquetImages.keys())
+    points = 0
+    c = {
+        "quinte_flush_royale": 0,
+        "quinte_flush": 0,
+        "carre": 0,
+        "full": 0,
+        "couleur": 0,
+        "suite": 0,
+        "suite_meilleure_valeur": 0,
+        "brelan": 0,
+        "paire": 0
+    }
+
+    # QUINTE FLUSH ROYALE
+    if (("10_de_carreau" in cartes_tri["carreau"] and "valet_de_carreau" in cartes_tri["carreau"] and "reine_de_carreau" in cartes_tri["carreau"]
+         and "roi_de_carreau" in cartes_tri["carreau"] and "as_de_carreau" in cartes_tri["carreau"])
+        or ("10_de_coeur" in cartes_tri["coeur"] and "valet_de_coeur" in cartes_tri["coeur"] and "reine_de_coeur" in cartes_tri["coeur"]
+            and "roi_de_coeur" in cartes_tri["coeur"] and "as_de_coeur" in cartes_tri["coeur"])
+        or ("10_de_pic" in cartes_tri["pic"] and "valet_de_pic" in cartes_tri["pic"] and "reine_de_pic" in cartes_tri["pic"]
+            and "roi_de_pic" in cartes_tri["pic"] and "as_de_pic" in cartes_tri["pic"])
+        or ("10_de_trefle" in cartes_tri["trefle"] and "valet_de_trefle" in cartes_tri["trefle"] and "reine_de_trefle" in cartes_tri["trefle"] and
+            "roi_de_trefle" in cartes_tri["trefle"] and "as_de_trefle" in cartes_tri["trefle"])):
+                c["quinte_flush_royale"] += 1
+
+    # QUINTE FLUSH
+    if (points == 0): # si pas de quinte flush royale
+        for symbole in ["carreau", "coeur", "pic", "trefle"]:
+            if (len(cartes_tri[symbole]) >= 5):
+                for carte_symbole in cartes_tri[symbole]:
+                    index = cartes_ordre.index(carte_symbole)
+                    if (index <= 37): # pour ne pas dépasser la liste (53-16)
+                        if (cartes_ordre[index+4] in cartes_tri[symbole]
+                            and cartes_ordre[index+8] in cartes_tri[symbole]
+                            and cartes_ordre[index+12] in cartes_tri[symbole]
+                            and cartes_ordre[index+16] in cartes_tri[symbole]):
+                                c["quinte_flush"] += 1
+    
+    # CARRE | BRELAN | PAIRE
+    for valeur in ["2","3","4","5","6","7","8","9","10","valet","reine","roi","as"]: # exclu les symboles, on garde uniquement le tri par valeur
+        nbr = len(cartes_tri[valeur])
+        if (nbr == 7):
+            c["carre"] += 1
+            c["brelan"] += 1
+        elif(nbr == 6):
+            c["carre"] += 1
+            c["paire"] += 1
+        elif(nbr == 5 or nbr == 4):
+            c["carre"] += 1
+        elif(nbr == 3):
+            c["brelan"] += 1
+        elif(nbr == 2):
+            c["paire"] += 1
+
+    # FULL
+    while(c["brelan"] >= 1 and c["paire"] >= 1):
+        c["full"] += 1
+        c["brelan"] -= 1
+        c["paire"] -= 1
+
+    # COULEUR
+    for couleur in ["carreau", "coeur", "pic", "trefle"]:
+        if (len(cartes_tri[couleur]) >= 5):
+            c["couleur"] += 1
+
+    # SUITE
+    cartes_tri_ordre = list(cartes_tri.keys())
+    for symbole in ["2","3","4","5","6","7","8","9", "10"]:
+        index = cartes_tri_ordre.index(symbole)
+        if (len(cartes_tri[cartes_tri_ordre[index]]) >= 1
+            and len(cartes_tri[cartes_tri_ordre[index+1]]) >= 1
+            and len(cartes_tri[cartes_tri_ordre[index+2]]) >= 1
+            and len(cartes_tri[cartes_tri_ordre[index+3]]) >= 1
+            and len(cartes_tri[cartes_tri_ordre[index+4]]) >= 1):
+                c["suite"] += 1
+                if (index > c["suite_meilleure_valeur"]):
+                    c["suite_meilleure_valeur"] = index
+    
+    return c
+
+#-----------------------------
+# Calcule la valeur par carte
+#-----------------------------
+def valeur_cartes(cartes_tri):
+    i = 0
+    points = 0
+    for valeur in ["2","3","4","5","6","7","8","9","10","valet","reine","roi","as"]:
+        i += 1
+        points += len(cartes_tri[valeur])*i
+    return points
 
 #----------------------
 # Fait perdre un joueur
@@ -242,12 +451,13 @@ def nouvelle_mise(nom_du_joueur, mise):
 #-----------------------------------
 # Fait gagner les mises à un joueur
 #-----------------------------------
-def gagne_la_mise(nom_du_joueur):
-    global joueurs, mises
-
+def gagne_la_mise(joueur):
+    global mises
     for jetons in mises.values():
         for couleur, nbr in jetons.items():
-            joueurs[nom_du_joueur]["jetons"][couleur] += nbr
+            joueur["jetons"][couleur] += nbr
+    joueur["perdu"] = False # annule la défaite par all-in
+    messagebox.showinfo("FELICITATIONS !", joueur["nom"] + " possède le meilleur jeu et remporte " + str(total_mises()) + " €")
     mises={}
 
 #----------------------------------------
@@ -261,8 +471,11 @@ def total_mises():
         total += mise["verts"] * 50
         total += mise["bleus"] * 100
         total += mise["noirs"] * 200
-    visible["total_mises"] = canvas.create_text(30, 40, text="BUTIN TOTAL : " + str(total) + " €", font=("Purisa",14), fill="white", anchor="w")
-    return total_mises
+    if ("total_mises" in visible.keys()):
+        canvas.itemconfigure(visible["total_mises"], text="BUTIN TOTAL : " + str(total) + " €")
+    else:
+        visible["total_mises"] = canvas.create_text(30, 40, text="BUTIN TOTAL : " + str(total) + " €", font=("Purisa",14), fill="white", anchor="w")
+    return total
 
 #--------------------
 # Affiche le visible
@@ -368,11 +581,20 @@ def status_boutons():
 #--------------------------------------------
 # Vérifie la fin de la boucle par les checks
 #--------------------------------------------
-def testCheck(boucle_terminee):
-    if (joueurs[joueurs_ordre[ordre-2]]["check"] == True) and (joueurs[joueurs_ordre[ordre-1]]["check"] == True) and (joueurs[joueurs_ordre[ordre]]["check"] == True):
-        boucle_terminee = True      
+def fin_de_tour_par_check():
+    for nom_joueur in mises_tour.keys():
+        if (joueurs[nom_joueur]["check"] == False and joueurs[nom_joueur]["couche"] == False):
+            return False
+    return True
 
-    return boucle_terminee
+#--------------------------------------------
+# Vérifie la fin de la boucle par les all-in
+#--------------------------------------------
+def fin_de_tour_par_all_in():
+    for nom_joueur in mises_tour.keys():
+        if (joueurs[nom_joueur]["all_in"] == False and joueurs[nom_joueur]["couche"] == False):
+            return False
+    return True
 
 #-------------------------
 # Passe au joueur suivant
@@ -384,25 +606,29 @@ def joueur_suivant():
 
     # Vérifie si tous les joueurs ont atteint la même mise
     boucle_terminee = False
-    for nom_joueur in mises_tour.keys():
-        if (joueurs[nom_joueur]["couche"] == False):
-            if (boucle_terminee == False):
-                boucle_terminee = mises_tour[nom_joueur]
-                boucle_terminee = testCheck(boucle_terminee)
-
-            elif (boucle_terminee != mises_tour[nom_joueur]) and (boucle_terminee != joueurs_ordre[ordre-2]):
-                bouton_check.configure(state=DISABLED)
-                break
-            
-            elif (boucle_terminee == mises_tour[nom_joueur]) and (boucle_terminee == mises_tour[joueurs_ordre[ordre-2]]):
-                boucle_terminee = True
-                break
+    if (fin_de_tour_par_check() == True):
+        boucle_terminee = True
+    elif (fin_de_tour_par_all_in() == True):
+        boucle_terminee = True
+    else:
+        x = None
+        boucle_terminee = True
+        for nom_joueur, mise in mises_tour.items():
+            if (joueurs[nom_joueur]["couche"] == False):
+                if (x == None):
+                    x = mise
+                elif (x != mise or mise == 0):
+                    boucle_terminee = False
+                    break
+                    
 
     # Affichage des cartes et passage au tour suivant (si tous les joueurs ont atteint la même mise)
     if (boucle_terminee == True):
-        affiche_visible()
-        status_boutons()
         messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.")
+        for nom_joueur in mises_tour.keys():
+            joueurs[nom_joueur]["check"]= False
+            mises_tour[nom_joueur]=0
+        mise_initiale=0
         revelation_carte()
         return False # stop la procédure joueur_suivant() en cours
 
@@ -433,21 +659,25 @@ def revelation_carte():
     global flop, turn, river, jeu_fini
     
     if jeu_fini == True:
-        messagebox.showinfo("INFORMATION", "FIN DU JEU")
-        jeu_fini = False
+        flop=True
+        turn=False
+        river=False
+        jeu_fini=False
+        fin_jeu()
         
     elif river == True:
         place_carte(680,110, tapis[4])
         bouton_check.configure(state=NORMAL)
         jeu_fini = True
         river = False
-        
+        joueur_suivant()
         
     elif turn == True:
         place_carte(580,110, tapis[3])
         bouton_check.configure(state=NORMAL)
         turn = False
         river=True
+        joueur_suivant()
    
     elif flop == True:
         for i in range(3):
@@ -455,13 +685,7 @@ def revelation_carte():
         bouton_check.configure(state=NORMAL)
         flop = False
         turn=True
-    
-    for nom_joueur in mises_tour.keys():
-        joueurs[nom_joueur]["check"]= False
-        mises_tour[nom_joueur]=0
-
-    affiche_visible()
-    mise_initiale=0
+        joueur_suivant()
         
 #--------------------------------------------
 # Récupère et affiche le total de la relance
@@ -507,7 +731,7 @@ def se_coucher():
     global mises_tour
     joueur_en_cours["couche"] = True
     if (len(mises_tour) == 1): # s'il ne reste plus qu'un joueur, il gagne
-        nouvelle_partie()
+        fin_jeu()
     else:
         joueur_suivant()
 
@@ -520,14 +744,14 @@ def relancer():
     tot = relance_mise + mises_tour[joueur_en_cours["nom"]]
     if (relance_mise == total(joueur_en_cours["nom"])): # relance de tout ce qu'il possède donc all-in
         joueur_en_cours["all_in"] = True
-    mise_initiale = relance_mise
+    mise_initiale = relance_mise +  mises_tour[joueur_en_cours["nom"]]
     nouvelle_mise(joueur_en_cours["nom"], {
             "rouges": scale_jetons_rouges.get(),
             "verts": scale_jetons_verts.get(),
             "bleus": scale_jetons_bleus.get(),
             "noirs": scale_jetons_noirs.get()
         })
-    mises_tour.update({joueur_en_cours["nom"]: mise_initiale + mises_tour[joueur_en_cours["nom"]]})
+    mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
     joueur_suivant()
 
 #----------------------
@@ -536,6 +760,7 @@ def relancer():
 def all_in():
     global mise_initiale, mises_tour
     joueur_en_cours["all_in"] = True
+    joueur_en_cours["perdu"] = True
     mise_initiale = total(joueur_en_cours["nom"]) + mises_tour[joueur_en_cours["nom"]]
     nouvelle_mise(joueur_en_cours["nom"], {
             "rouges": joueur_en_cours["jetons"]["rouges"],
@@ -660,7 +885,6 @@ flop=True
 turn=False
 river=False
 jeu_fini=False
-
 
 nouveau_joueur("Hugo")
 nouveau_joueur("Yves")
