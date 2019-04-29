@@ -598,9 +598,7 @@ def fin_de_tour_par_all_in():
 # Passe au joueur suivant
 #-------------------------
 def joueur_suivant():
-    global ordre, joueur_en_cours, mises_tour, total_jetons, joueurs_ordre
-    
-    total_jetons = 0
+    global ordre, joueur_en_cours, mises_tour, joueurs_ordre, mise_initiale
 
     # Vérifie si tous les joueurs ont atteint la même mise
     boucle_terminee = False
@@ -619,7 +617,6 @@ def joueur_suivant():
                     boucle_terminee = False
                     break
                     
-
     # Affichage des cartes et passage au tour suivant (si tous les joueurs ont atteint la même mise)
     if (boucle_terminee == True):
         messagebox.showinfo("INFORMATION", "FIN DU TOUR, TOUS LES JOUEURS ONT ATTEINT LA MÊME MISE.")
@@ -736,7 +733,7 @@ def se_coucher():
 # Relance une mise
 #------------------
 def relancer():
-    global relance_mise, mises_tour, mise_initiale
+    global relance_mise, mises_tour, mise_initiale, total_jetons
     relance_mise = total_jetons
     tot = relance_mise + mises_tour[joueur_en_cours["nom"]]
     if (relance_mise == total(joueur_en_cours["nom"])): # relance de tout ce qu'il possède donc all-in
@@ -750,6 +747,7 @@ def relancer():
         })
     mises_tour.update({joueur_en_cours["nom"]: mise_initiale})
     joueur_suivant()
+    total_jetons = 0
 
 #----------------------
 # Mise tout les jetons
