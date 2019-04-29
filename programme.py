@@ -124,7 +124,6 @@ def total(nom_du_joueur):
     total += joueurs[nom_du_joueur]["jetons"]["noirs"] * 200
     return total
     
-
 #---------------------------------
 # Crée un nouveau paquet de cartes
 #---------------------------------
@@ -235,7 +234,6 @@ def nouvelle_partie():
     distribuer()
     affiche_visible()
     position_des_blindes()
-
 
 #----------------
 # Cloture le jeu
@@ -651,7 +649,6 @@ def joueur_suivant():
     affiche_visible()
     status_boutons()
 
-
 #--------------------------------
 # Révèle les cartes sur le tapis
 #--------------------------------
@@ -880,7 +877,6 @@ scale_jetons_noirs.pack()
 bouton_relance=Button(fen,text="Relancer", command=relancer, state=DISABLED)
 bouton_relance.pack()
 
-mise_initiale=50
 flop=True
 turn=False
 river=False
