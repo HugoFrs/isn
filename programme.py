@@ -515,14 +515,15 @@ def affiche_visible():
     total_mises()
     i = 0
     for joueur in joueurs.values():
-        i += 1
-        visible["scoreboard"].append({
-                "nom": canvas.create_text(31, 600-i*25, text=joueur["nom"], font=("Purisa", 12), fill="white", anchor="w"),
-                "total": canvas.create_text(150, 600-i*25, text=str(total(joueur["nom"])) + " €", font=("Purisa", 12), fill="white", anchor="w"),
-                "total_mise": canvas.create_text(250, 600-i*25, text=str(mises_tour[joueur["nom"]]) + " €", font=("Purisa", 12), fill="white", anchor="w")
-            })
-        visible["main"].append(place_carte(420, 490, joueur_en_cours["main"][0]))
-        visible["main"].append(place_carte(500, 490, joueur_en_cours["main"][1]))
+        if (joueur["perdu"] == False):
+            i += 1
+            visible["scoreboard"].append({
+                    "nom": canvas.create_text(31, 600-i*25, text=joueur["nom"], font=("Purisa", 12), fill="white", anchor="w"),
+                    "total": canvas.create_text(150, 600-i*25, text=str(total(joueur["nom"])) + " €", font=("Purisa", 12), fill="white", anchor="w"),
+                    "total_mise": canvas.create_text(250, 600-i*25, text=str(mises_tour[joueur["nom"]]) + " €", font=("Purisa", 12), fill="white", anchor="w")
+                })
+            visible["main"].append(place_carte(420, 490, joueur_en_cours["main"][0]))
+            visible["main"].append(place_carte(500, 490, joueur_en_cours["main"][1]))
 
     i += 1
     visible["tableau"].update({
